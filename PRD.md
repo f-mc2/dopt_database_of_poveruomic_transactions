@@ -59,7 +59,8 @@ UI allows overriding per session (stored in `st.session_state`).
 #### `transactions`
 Fields:
 - `id` INTEGER PRIMARY KEY
-- `date` TEXT NOT NULL (ISO `YYYY-MM-DD`)
+- `date_payment` TEXT NOT NULL (ISO `YYYY-MM-DD`)
+- `date_application` TEXT NOT NULL (ISO `YYYY-MM-DD`)
 - `amount_cents` INTEGER NOT NULL (currency magnitude)
 - `payer` TEXT NULL
 - `payee` TEXT NULL
