@@ -122,77 +122,95 @@ try:
         st.dataframe(table_rows, use_container_width=True)
 
     st.subheader("Edit or delete")
-    for row in transactions:
-        tx_id = int(row["id"])
-        expander_label = (
-            f"Transaction {tx_id} • pay {row['date_payment']} • app {row['date_application']}"
+    if not transactions:
+        st.info("No transactions available for editing.")
+    else:
+        tx_map = {int(row["id"]): row for row in transactions}
+        tx_ids = list(tx_map.keys())
+
+        def _format_tx_id(value: int) -> str:
+            row = tx_map.get(value)
+            if row is None:
+                return str(value)
+            amount_value = amounts.format_cents(int(row["amount_cents"]))
+            return f"{value} • pay {row['date_payment']} • app {row['date_application']} • {amount_value}"
+
+        selected_id = st.selectbox(
+            "Transaction ID",
+            tx_ids,
+            format_func=_format_tx_id,
+            key="tx_edit_id",
         )
-        with st.expander(expander_label):
-            current_tags = row["tags"].split(",") if row["tags"] else []
+        selected_row = queries.get_transaction(conn, selected_id)
+        if selected_row is None:
+            st.warning("Selected transaction is not available.")
+        else:
+            current_tags = tags.get_tags_for_transaction(conn, selected_id)
             st.write(
-                f"Amount: {amounts.format_cents(int(row['amount_cents']))} | "
-                f"Category: {row['category']} | Subcategory: {row['subcategory'] or '(empty)'}"
+                f"Amount: {amounts.format_cents(int(selected_row['amount_cents']))} | "
+                f"Category: {selected_row['category']} | "
+                f"Subcategory: {selected_row['subcategory'] or '(empty)'}"
             )
 
-            with st.form(f"edit_tx_{tx_id}"):
+            with st.form(f"edit_tx_{selected_id}"):
                 form_date_payment = st.date_input(
                     "Payment date",
-                    value=dt.date.fromisoformat(row["date_payment"]),
-                    key=f"tx_date_payment_{tx_id}",
+                    value=dt.date.fromisoformat(selected_row["date_payment"]),
+                    key=f"tx_date_payment_{selected_id}",
                 )
                 form_date_application = st.date_input(
                     "Application date",
-                    value=dt.date.fromisoformat(row["date_application"]),
-                    key=f"tx_date_application_{tx_id}",
+                    value=dt.date.fromisoformat(selected_row["date_application"]),
+                    key=f"tx_date_application_{selected_id}",
                 )
                 form_amount = st.text_input(
                     "Amount",
-                    value=amounts.format_cents(int(row["amount_cents"])),
-                    key=f"tx_amount_{tx_id}",
+                    value=amounts.format_cents(int(selected_row["amount_cents"])),
+                    key=f"tx_amount_{selected_id}",
                 )
                 form_payer = ui_widgets.select_or_add(
                     "Payer",
                     payer_options,
-                    key=f"tx_payer_{tx_id}",
+                    key=f"tx_payer_{selected_id}",
                     allow_empty=True,
-                    current=row["payer"],
+                    current=selected_row["payer"],
                 )
                 form_payee = ui_widgets.select_or_add(
                     "Payee",
                     payee_options,
-                    key=f"tx_payee_{tx_id}",
+                    key=f"tx_payee_{selected_id}",
                     allow_empty=True,
-                    current=row["payee"],
+                    current=selected_row["payee"],
                 )
                 form_category = ui_widgets.select_or_add(
                     "Category",
                     category_options,
-                    key=f"tx_category_{tx_id}",
+                    key=f"tx_category_{selected_id}",
                     allow_empty=False,
-                    current=row["category"],
+                    current=selected_row["category"],
                 )
                 form_subcategory = ui_widgets.select_or_add(
                     "Subcategory",
                     subcategory_options,
-                    key=f"tx_subcategory_{tx_id}",
+                    key=f"tx_subcategory_{selected_id}",
                     allow_empty=True,
-                    current=row["subcategory"],
+                    current=selected_row["subcategory"],
                 )
                 form_notes = st.text_area(
                     "Notes",
-                    value=row["notes"] or "",
-                    key=f"tx_notes_{tx_id}",
+                    value=selected_row["notes"] or "",
+                    key=f"tx_notes_{selected_id}",
                 )
 
                 form_tags = st.multiselect(
                     "Tags",
                     options=tag_options,
                     default=current_tags,
-                    key=f"tx_tags_{tx_id}",
+                    key=f"tx_tags_{selected_id}",
                 )
                 new_tags_raw = st.text_input(
                     "Add new tags (comma-separated)",
-                    key=f"tx_new_tags_{tx_id}",
+                    key=f"tx_new_tags_{selected_id}",
                 )
 
                 submitted = st.form_submit_button("Save changes")
@@ -232,7 +250,7 @@ try:
                     with conn:
                         queries.update_transaction(
                             conn,
-                            transaction_id=tx_id,
+                            transaction_id=selected_id,
                             date_payment=form_date_payment.isoformat(),
                             date_application=form_date_application.isoformat(),
                             amount_cents=amount_cents,
@@ -243,18 +261,18 @@ try:
                             notes=notes_value,
                             updated_at=updated_at,
                         )
-                        tags.set_transaction_tags(conn, tx_id, combined_tags)
+                        tags.set_transaction_tags(conn, selected_id, combined_tags)
                     st.success("Transaction updated.")
                     st.rerun()
 
             st.divider()
-            confirm_delete = st.checkbox("Confirm delete", key=f"tx_delete_confirm_{tx_id}")
-            if st.button("Delete transaction", key=f"tx_delete_{tx_id}"):
+            confirm_delete = st.checkbox("Confirm delete", key=f"tx_delete_confirm_{selected_id}")
+            if st.button("Delete transaction", key=f"tx_delete_{selected_id}"):
                 if not confirm_delete:
                     st.warning("Please confirm deletion.")
                 else:
                     with conn:
-                        queries.delete_transaction(conn, tx_id)
+                        queries.delete_transaction(conn, selected_id)
                     st.success("Transaction deleted.")
                     st.rerun()
 
