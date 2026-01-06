@@ -47,6 +47,17 @@ def choose_input(
     return None, None
 
 
+def select_existing(label: str, options: List[str], key: str, allow_empty: bool = True) -> Optional[str]:
+    choices: List[str] = []
+    if allow_empty:
+        choices.append("(empty)")
+    choices.extend(options)
+    selection = st.selectbox(label, choices, key=key)
+    if selection == "(empty)":
+        return None
+    return selection
+
+
 
 conn: Optional[sqlite3.Connection] = None
 try:
@@ -98,36 +109,36 @@ try:
         form_amount = st.text_input("Amount", value="0.00", key="add_amount")
 
         payer_new = st.text_input("New payer", key="add_payer_new")
-        payer_existing = ui_widgets.typeahead_single_select(
+        payer_existing = select_existing(
             "Select existing payer",
             payer_options,
             key="add_payer_existing",
         )
 
         payee_new = st.text_input("New payee", key="add_payee_new")
-        payee_existing = ui_widgets.typeahead_single_select(
+        payee_existing = select_existing(
             "Select existing payee",
             payee_options,
             key="add_payee_existing",
         )
 
         payment_type_new = st.text_input("New payment type", key="add_payment_type_new")
-        payment_type_existing = ui_widgets.typeahead_single_select(
+        payment_type_existing = select_existing(
             "Select existing payment type",
             payment_type_options,
             key="add_payment_type_existing",
         )
 
         category_new = st.text_input("New category", key="add_category_new")
-        category_existing = ui_widgets.typeahead_single_select(
+        category_existing = select_existing(
             "Select existing category",
             category_options,
             key="add_category_existing",
-            include_empty=False,
+            allow_empty=False,
         )
 
         subcategory_new = st.text_input("New subcategory", key="add_subcategory_new")
-        subcategory_existing = ui_widgets.typeahead_single_select(
+        subcategory_existing = select_existing(
             "Select existing subcategory",
             subcategory_options,
             key="add_subcategory_existing",
