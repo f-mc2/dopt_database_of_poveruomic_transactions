@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import List, Optional, Sequence
 
 DEFAULT_TIMEOUT_SECONDS = 30
+REQUIRED_TABLES = ("transactions", "tags", "transaction_tags")
 
 
 def connect(db_path: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> sqlite3.Connection:
@@ -21,6 +22,18 @@ def init_db(conn: sqlite3.Connection, schema_path: str) -> None:
     schema_sql = Path(schema_path).read_text(encoding="utf-8")
     conn.executescript(schema_sql)
     conn.commit()
+
+
+def schema_is_valid(conn: sqlite3.Connection) -> bool:
+    for table_name in REQUIRED_TABLES:
+        row = fetch_one(
+            conn,
+            "SELECT name FROM sqlite_master WHERE type = ? AND name = ?",
+            ("table", table_name),
+        )
+        if row is None:
+            return False
+    return True
 
 
 def execute(conn: sqlite3.Connection, sql: str, params: Sequence[object] = ()) -> sqlite3.Cursor:
