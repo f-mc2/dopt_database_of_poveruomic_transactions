@@ -36,6 +36,14 @@ def schema_is_valid(conn: sqlite3.Connection) -> bool:
     return True
 
 
+def backup_db(conn: sqlite3.Connection, target_path: str) -> None:
+    target_conn = sqlite3.connect(target_path)
+    try:
+        conn.backup(target_conn)
+    finally:
+        target_conn.close()
+
+
 def execute(conn: sqlite3.Connection, sql: str, params: Sequence[object] = ()) -> sqlite3.Cursor:
     return conn.execute(sql, params)
 
