@@ -140,7 +140,7 @@ def _aggregate_cell(
         FROM transactions t
         WHERE t.{date_field} >= ? AND t.{date_field} <= ? AND ({node_sql})
     """
-    params = [period.start_date, period.end_date] + node_params + group_params
+    params = group_params + [period.start_date, period.end_date] + node_params
     row = conn.execute(sql, params).fetchone()
     if row is None:
         tx_count = inflow = outflow = internal = 0
