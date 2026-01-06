@@ -86,7 +86,7 @@ try:
                     "notes": row["notes"] or "",
                 }
             )
-        st.dataframe(table_rows, use_container_width=True, height=table_height)
+        st.dataframe(table_rows, width='stretch', height=table_height)
 
     st.subheader("Add transaction")
     with st.form("add_transaction"):
