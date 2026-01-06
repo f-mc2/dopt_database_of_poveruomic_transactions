@@ -1,4 +1,5 @@
-# Personal Finance Dashboard (Streamlit + SQLite) — MVP PRD
+# DOPT (Database of Poveruomic Transactions) - Personal Finance Dashboard (Streamlit + SQLite) — MVP PRD
+
 
 ## 0) One-line summary
 A single-user, local-first Streamlit app to manage a SQLite transaction database with CSV import/export, per-transaction edit/delete, value management (rename/delete), manual timestamped backups, and a comparison engine (periods × groups × nodes) with grouped-bar plots. No saved presets.
