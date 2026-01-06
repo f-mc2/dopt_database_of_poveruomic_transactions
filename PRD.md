@@ -75,7 +75,8 @@ Constraints:
 - `CHECK (payer IS NULL OR payee IS NULL OR payer <> payee)`
 
 Indexes (minimum):
-- index on `date`
+- index on `date_payment`
+- index on `date_application`
 - index on `(category, subcategory)`
 - index on `payer`
 - index on `payee`
@@ -111,7 +112,8 @@ Flow:
 5. App inserts rows into DB within a single SQL transaction.
 
 Required columns:
-- `date` (strict `YYYY-MM-DD`)
+- `date_payment` (strict `YYYY-MM-DD`)
+- `date_application` (strict `YYYY-MM-DD`)
 - `amount`
 - `category` (stored lowercase)
 
@@ -133,7 +135,7 @@ Rules:
 
 ### 5.2 CSV export
 User chooses:
-- date range (required)
+- date field (payment/application) + date range (required)
 - optional filters: payer(s), payee(s), category(s), subcategory(s), tag(s)
 
 Export behavior:
@@ -149,19 +151,19 @@ Export behavior:
 
 ### 6.1 List + filter
 Transactions page supports:
-- date range filter
+- date field selector + date range filter
 - payer(s), payee(s), category(s), subcategory(s), tag(s) filters
 - free-text search over payer/payee/category/subcategory/notes (and optionally tags)
 
 Display:
-- Table showing `id`, date, amount, payer, payee, category, subcategory, tags, notes.
+- Table showing `id`, date_payment, date_application, amount, payer, payee, category, subcategory, tags, notes.
 - Each row supports:
   - Edit action
   - Delete action (with confirmation)
 
 ### 6.2 Edit form (single transaction)
 Editable fields:
-- date, amount, payer, payee, category, subcategory, tags, notes
+- date_payment, date_application, amount, payer, payee, category, subcategory, tags, notes
 
 Selection UI:
 - payer/payee/category/subcategory: choose from existing distinct values; include “(empty)” and an “Add new…” path.
@@ -239,6 +241,9 @@ Each period:
 - `label`
 - `start_date` (YYYY-MM-DD)
 - `end_date` (YYYY-MM-DD), inclusive
+
+Before defining periods, the user selects which date field the periods apply to:
+- `date_payment` or `date_application`
 
 #### 10.2.2 Groups (1–5)
 Each group \(G_i\):
@@ -408,5 +413,3 @@ Performance (MVP): iterate periods × groups × members, run 1 aggregation query
 * Bulk edit
 * Advanced analytics (rolling averages, forecasting)
 * Multi-currency support
-
-
