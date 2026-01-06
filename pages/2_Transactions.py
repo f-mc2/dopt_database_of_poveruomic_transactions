@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import sqlite3
 import streamlit as st
@@ -29,22 +29,6 @@ def normalize_required(value: Optional[str], lower: bool = False) -> str:
         raise ValueError("Value is required")
     return cleaned.lower() if lower else cleaned
 
-
-def resolve_input(
-    new_value: Optional[str],
-    existing_value: Optional[str],
-    required: bool,
-    lower: bool = False,
-) -> Tuple[Optional[str], Optional[str]]:
-    if new_value and new_value.strip():
-        cleaned = new_value.strip()
-        return (cleaned.lower() if lower else cleaned), None
-    if existing_value:
-        cleaned = existing_value.strip()
-        return (cleaned.lower() if lower else cleaned), None
-    if required:
-        return None, "Value is required"
-    return None, None
 
 
 conn: Optional[sqlite3.Connection] = None
@@ -94,91 +78,77 @@ try:
         form_date_application = st.date_input(
             "Application date", value=today, key="add_date_application"
         )
-        form_amount_value = st.number_input(
-            "Amount", min_value=0.0, step=0.01, format="%.2f", key="add_amount"
-        )
+        form_amount = st.text_input("Amount", value="0.00", key="add_amount")
 
-        payer_new = st.text_input("New payer", key="add_payer_new")
-        payer_existing = ui_widgets.typeahead_single_select(
-            "Select existing payer", payer_options, key="add_payer_existing"
+        form_payer = ui_widgets.select_or_add(
+            "Payer",
+            payer_options,
+            key="add_payer",
+            allow_empty=True,
         )
-
-        payee_new = st.text_input("New payee", key="add_payee_new")
-        payee_existing = ui_widgets.typeahead_single_select(
-            "Select existing payee", payee_options, key="add_payee_existing"
+        form_payee = ui_widgets.select_or_add(
+            "Payee",
+            payee_options,
+            key="add_payee",
+            allow_empty=True,
         )
-
-        payment_type_new = st.text_input("New payment type", key="add_payment_type_new")
-        payment_type_existing = ui_widgets.typeahead_single_select(
-            "Select existing payment type",
+        form_payment_type = ui_widgets.select_or_add(
+            "Payment type",
             payment_type_options,
-            key="add_payment_type_existing",
+            key="add_payment_type",
+            allow_empty=True,
         )
-
-        category_new = st.text_input("New category", key="add_category_new")
-        category_existing = ui_widgets.typeahead_single_select(
-            "Select existing category",
+        form_category = ui_widgets.select_or_add(
+            "Category",
             category_options,
-            key="add_category_existing",
-            include_empty=False,
+            key="add_category",
+            allow_empty=False,
         )
-
-        subcategory_new = st.text_input("New subcategory", key="add_subcategory_new")
-        subcategory_existing = ui_widgets.typeahead_single_select(
-            "Select existing subcategory",
+        form_subcategory = ui_widgets.select_or_add(
+            "Subcategory",
             subcategory_options,
-            key="add_subcategory_existing",
+            key="add_subcategory",
+            allow_empty=True,
         )
+        form_notes = st.text_area("Notes", key="add_notes")
 
-        notes_value = st.text_area("Notes", key="add_notes")
-
-        tags_existing = st.multiselect(
-            "Select existing tags", options=tag_options, default=[], key="add_tags_existing"
+        form_tags = st.multiselect(
+            "Tags",
+            options=tag_options,
+            default=[],
+            key="add_tags",
         )
-        tags_new = st.text_input("Add new tags (comma-separated)", key="add_tags_new")
+        new_tags_raw = st.text_input(
+            "Add new tags (comma-separated)",
+            key="add_tags_new",
+        )
 
         submitted_new = st.form_submit_button("Add transaction")
 
     if submitted_new:
         errors: List[str] = []
         try:
-            amount_cents = amounts.parse_amount_to_cents(f"{form_amount_value:.2f}")
+            amount_cents = amounts.parse_amount_to_cents(form_amount)
         except ValueError as exc:
             errors.append(str(exc))
 
-        payer_value, payer_error = resolve_input(payer_new, payer_existing, required=False)
-        if payer_error:
-            errors.append(payer_error)
+        try:
+            category_value = normalize_required(form_category, lower=True)
+        except ValueError as exc:
+            errors.append(str(exc))
+            category_value = ""
 
-        payee_value, payee_error = resolve_input(payee_new, payee_existing, required=False)
-        if payee_error:
-            errors.append(payee_error)
-
-        payment_type_value, payment_error = resolve_input(
-            payment_type_new, payment_type_existing, required=False, lower=True
-        )
-        if payment_error:
-            errors.append(payment_error)
-
-        category_value, category_error = resolve_input(
-            category_new, category_existing, required=True, lower=True
-        )
-        if category_error:
-            errors.append(category_error)
-
-        subcategory_value, subcategory_error = resolve_input(
-            subcategory_new, subcategory_existing, required=False, lower=True
-        )
-        if subcategory_error:
-            errors.append(subcategory_error)
-
-        notes_value_clean = normalize_optional(notes_value)
+        payer_value = normalize_optional(form_payer)
+        payee_value = normalize_optional(form_payee)
+        payment_type_value = normalize_optional(form_payment_type, lower=True)
+        subcategory_value = normalize_optional(form_subcategory, lower=True)
+        notes_value_clean = normalize_optional(form_notes)
 
         if payer_value and payee_value and payer_value == payee_value:
             errors.append("Payer and payee must be different")
 
         combined_tags = []
-        for tag_name in list(tags_existing) + tags.parse_tags(tags_new):
+        for tag_name in list(form_tags) + tags.parse_tags(new_tags_raw):
             normalized = tags.normalize_tag(tag_name)
             if not normalized or normalized in combined_tags:
                 continue
