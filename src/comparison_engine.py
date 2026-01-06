@@ -133,15 +133,18 @@ def _aggregate_cell(
     """
     params = [period.start_date, period.end_date] + node_params + group_params
     row = conn.execute(sql, params).fetchone()
-
-    inflow = int(row["inflow_cents"])
-    outflow = int(row["outflow_cents"])
-    internal = int(row["internal_cents"])
+    if row is None:
+        tx_count = inflow = outflow = internal = 0
+    else:
+        tx_count = int(row[0])
+        inflow = int(row[1])
+        outflow = int(row[2])
+        internal = int(row[3])
     return {
         "period": period.label,
         "group": group.label,
         "node": node_label,
-        "tx_count": int(row["tx_count"]),
+        "tx_count": tx_count,
         "inflow_cents": inflow,
         "outflow_cents": outflow,
         "internal_cents": internal,
