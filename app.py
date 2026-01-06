@@ -4,7 +4,7 @@ import sqlite3
 
 import streamlit as st
 
-from src import db
+from src import db, settings
 
 st.set_page_config(
     page_title="Database of Poveruomic Transactions",
@@ -15,9 +15,12 @@ st.set_page_config(
 
 DEFAULT_DB_PATH = os.environ.get("FINANCE_DB_PATH", "/data/finance.db")
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
+STATE_PATH = Path(__file__).resolve().parent / ".dopt_state.json"
+
+state = settings.load_state(STATE_PATH)
 
 if "db_path" not in st.session_state:
-    st.session_state.db_path = DEFAULT_DB_PATH
+    st.session_state.db_path = state.get("last_db_path", DEFAULT_DB_PATH)
 if "db_ready" not in st.session_state:
     st.session_state.db_ready = False
 
@@ -56,6 +59,7 @@ else:
                 conn = db.connect(str(current_path))
                 if db.schema_is_valid(conn):
                     st.session_state.db_ready = True
+                    settings.save_state(STATE_PATH, {"last_db_path": str(current_path)})
                     st.success("Database opened and schema validated.")
                 else:
                     st.session_state.db_ready = False
@@ -72,6 +76,7 @@ else:
                 conn = db.connect(str(current_path))
                 db.init_db(conn, str(SCHEMA_PATH))
                 st.session_state.db_ready = True
+                settings.save_state(STATE_PATH, {"last_db_path": str(current_path)})
                 st.success("Database created and schema initialized.")
             except sqlite3.Error as exc:
                 st.session_state.db_ready = False
