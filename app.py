@@ -23,6 +23,8 @@ if "db_path" not in st.session_state:
     st.session_state.db_path = state.get("last_db_path", DEFAULT_DB_PATH)
 if "db_ready" not in st.session_state:
     st.session_state.db_ready = False
+if "db_auto_open_attempted" not in st.session_state:
+    st.session_state.db_auto_open_attempted = False
 
 st.title("Home")
 st.write("Choose a database path and open or create the schema.")
@@ -36,6 +38,7 @@ if submitted:
     if cleaned:
         st.session_state.db_path = cleaned
         st.session_state.db_ready = False
+        st.session_state.db_auto_open_attempted = False
     else:
         st.warning("Database path is required.")
 
@@ -52,6 +55,26 @@ else:
     parent_ok = current_path.parent.exists()
     if not parent_ok:
         st.error(f"Parent directory does not exist: {current_path.parent}")
+
+    if (
+        not st.session_state.db_ready
+        and not st.session_state.db_auto_open_attempted
+        and current_path.exists()
+        and parent_ok
+    ):
+        st.session_state.db_auto_open_attempted = True
+        try:
+            conn = db.connect(str(current_path))
+            if db.schema_is_valid(conn):
+                st.session_state.db_ready = True
+                settings.save_state(STATE_PATH, {"last_db_path": str(current_path)})
+            else:
+                st.warning("Saved database path has an invalid schema.")
+        except sqlite3.Error as exc:
+            st.warning(f"Auto-open failed: {exc}")
+        finally:
+            if "conn" in locals():
+                conn.close()
 
     if current_path.exists() and parent_ok:
         if st.button("Open existing database"):
@@ -87,4 +110,5 @@ else:
 
 if st.button("Switch DB"):
     st.session_state.db_ready = False
+    st.session_state.db_auto_open_attempted = False
     st.info("You can set a new database path above.")
