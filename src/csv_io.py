@@ -7,10 +7,11 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 from src import amounts, tags
 
-REQUIRED_COLUMNS = {"date", "amount", "category"}
+REQUIRED_COLUMNS = {"date_payment", "date_application", "amount", "category"}
 OPTIONAL_COLUMNS = {"payer", "payee", "subcategory", "notes", "tags"}
 EXPORT_COLUMNS = [
-    "date",
+    "date_payment",
+    "date_application",
     "amount",
     "payer",
     "payee",
@@ -23,7 +24,8 @@ EXPORT_COLUMNS = [
 
 @dataclass(frozen=True)
 class ParsedRow:
-    date: str
+    date_payment: str
+    date_application: str
     amount_cents: int
     payer: Optional[str]
     payee: Optional[str]
@@ -73,10 +75,16 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
     for index, row in enumerate(rows, start=1):
         row_errors: List[str] = []
         try:
-            date_value = _parse_date(row.get("date"))
+            date_payment = _parse_date(row.get("date_payment"), "date_payment")
         except ValueError as exc:
             row_errors.append(str(exc))
-            date_value = ""
+            date_payment = ""
+
+        try:
+            date_application = _parse_date(row.get("date_application"), "date_application")
+        except ValueError as exc:
+            row_errors.append(str(exc))
+            date_application = ""
 
         try:
             amount_cents = amounts.parse_amount_to_cents(row.get("amount") or "")
@@ -105,7 +113,8 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
 
         parsed.append(
             ParsedRow(
-                date=date_value,
+                date_payment=date_payment,
+                date_application=date_application,
                 amount_cents=amount_cents,
                 payer=payer_value,
                 payee=payee_value,
@@ -125,7 +134,8 @@ def insert_transactions(conn, rows: Sequence[ParsedRow]) -> None:
         cursor = conn.execute(
             """
             INSERT INTO transactions (
-                date,
+                date_payment,
+                date_application,
                 amount_cents,
                 payer,
                 payee,
@@ -135,10 +145,11 @@ def insert_transactions(conn, rows: Sequence[ParsedRow]) -> None:
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                row.date,
+                row.date_payment,
+                row.date_application,
                 row.amount_cents,
                 row.payer,
                 row.payee,
@@ -159,7 +170,8 @@ def insert_transactions(conn, rows: Sequence[ParsedRow]) -> None:
 def build_export_rows(rows: Iterable[Union[Dict[str, object], object]]) -> List[Dict[str, str]]:
     export_rows: List[Dict[str, str]] = []
     for row in rows:
-        date_value = _row_value(row, "date", "")
+        date_payment = _row_value(row, "date_payment", "")
+        date_application = _row_value(row, "date_application", "")
         amount_value = _row_value(row, "amount_cents", 0)
         payer_value = _row_value(row, "payer", "")
         payee_value = _row_value(row, "payee", "")
@@ -169,7 +181,8 @@ def build_export_rows(rows: Iterable[Union[Dict[str, object], object]]) -> List[
         tags_value = _row_value(row, "tags", "")
         export_rows.append(
             {
-                "date": str(date_value),
+                "date_payment": str(date_payment),
+                "date_application": str(date_application),
                 "amount": amounts.format_cents(int(amount_value)),
                 "payer": payer_value or "",
                 "payee": payee_value or "",
@@ -230,12 +243,12 @@ def _normalize_required(value: Optional[str], lower: bool = False) -> str:
     return cleaned.lower() if lower else cleaned
 
 
-def _parse_date(value: Optional[str]) -> str:
+def _parse_date(value: Optional[str], field_label: str) -> str:
     cleaned = (value or "").strip()
     if len(cleaned) != 10:
-        raise ValueError("Invalid date format")
+        raise ValueError(f"Invalid {field_label} format")
     try:
         dt.date.fromisoformat(cleaned)
     except ValueError as exc:
-        raise ValueError("Invalid date format") from exc
+        raise ValueError(f"Invalid {field_label} format") from exc
     return cleaned

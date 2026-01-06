@@ -69,7 +69,18 @@ try:
     subcategory_pairs = queries.get_category_subcategory_pairs(conn)
     tag_options = tags.list_tags(conn)
 
-    min_date, max_date = queries.get_date_bounds(conn)
+    date_field_labels = {
+        "Payment date": "date_payment",
+        "Application date": "date_application",
+    }
+    selected_label = st.selectbox(
+        "Period date field",
+        list(date_field_labels.keys()),
+        key="compare_date_field",
+    )
+    date_field = date_field_labels[selected_label]
+
+    min_date, max_date = queries.get_date_bounds(conn, date_field)
     if min_date is None or max_date is None:
         min_date_value = dt.date.today()
         max_date_value = dt.date.today()
@@ -206,6 +217,7 @@ try:
                     groups=groups,
                     mode=mode,
                     node_mode="or",
+                    date_field=date_field,
                     or_nodes=node_entries,
                 )
             else:
@@ -215,6 +227,7 @@ try:
                     groups=groups,
                     mode=mode,
                     node_mode="and",
+                    date_field=date_field,
                     and_entries=node_entries,
                     and_tags=node_tags,
                     tag_match=tag_match,

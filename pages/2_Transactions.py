@@ -44,7 +44,18 @@ try:
     subcategory_options = queries.get_distinct_values(conn, "subcategory")
     tag_options = tags.list_tags(conn)
 
-    min_date, max_date = queries.get_date_bounds(conn)
+    date_field_labels = {
+        "Payment date": "date_payment",
+        "Application date": "date_application",
+    }
+    selected_label = st.selectbox(
+        "Filter by date field",
+        list(date_field_labels.keys()),
+        key="tx_date_field",
+    )
+    date_field = date_field_labels[selected_label]
+
+    min_date, max_date = queries.get_date_bounds(conn, date_field)
     today = dt.date.today()
     start_default = dt.date.fromisoformat(min_date) if min_date else today
     end_default = dt.date.fromisoformat(max_date) if max_date else today
@@ -52,9 +63,11 @@ try:
     st.subheader("Filters")
     date_col1, date_col2 = st.columns(2)
     with date_col1:
-        start_date = st.date_input("Start date", value=start_default, key="tx_filter_start")
+        start_date = st.date_input(
+            "Start date", value=start_default, key=f"tx_filter_start_{date_field}"
+        )
     with date_col2:
-        end_date = st.date_input("End date", value=end_default, key="tx_filter_end")
+        end_date = st.date_input("End date", value=end_default, key=f"tx_filter_end_{date_field}")
 
     search_text = st.text_input("Search text", key="tx_filter_search")
 
@@ -73,6 +86,7 @@ try:
     tag_filter = ui_widgets.typeahead_multi_select("Tags", tag_options, key="tx_filter_tags")
 
     filters = {
+        "date_field": date_field,
         "date_start": start_date.isoformat() if start_date else None,
         "date_end": end_date.isoformat() if end_date else None,
         "payers": convert_empty_selection(payer_filter),
@@ -94,7 +108,8 @@ try:
             table_rows.append(
                 {
                     "id": row["id"],
-                    "date": row["date"],
+                    "date_payment": row["date_payment"],
+                    "date_application": row["date_application"],
                     "amount": amounts.format_cents(int(row["amount_cents"])),
                     "payer": row["payer"] or "",
                     "payee": row["payee"] or "",
@@ -109,7 +124,9 @@ try:
     st.subheader("Edit or delete")
     for row in transactions:
         tx_id = int(row["id"])
-        expander_label = f"Transaction {tx_id} • {row['date']}"
+        expander_label = (
+            f"Transaction {tx_id} • pay {row['date_payment']} • app {row['date_application']}"
+        )
         with st.expander(expander_label):
             current_tags = row["tags"].split(",") if row["tags"] else []
             st.write(
@@ -118,10 +135,15 @@ try:
             )
 
             with st.form(f"edit_tx_{tx_id}"):
-                form_date = st.date_input(
-                    "Date",
-                    value=dt.date.fromisoformat(row["date"]),
-                    key=f"tx_date_{tx_id}",
+                form_date_payment = st.date_input(
+                    "Payment date",
+                    value=dt.date.fromisoformat(row["date_payment"]),
+                    key=f"tx_date_payment_{tx_id}",
+                )
+                form_date_application = st.date_input(
+                    "Application date",
+                    value=dt.date.fromisoformat(row["date_application"]),
+                    key=f"tx_date_application_{tx_id}",
                 )
                 form_amount = st.text_input(
                     "Amount",
@@ -211,7 +233,8 @@ try:
                         queries.update_transaction(
                             conn,
                             transaction_id=tx_id,
-                            date=form_date.isoformat(),
+                            date_payment=form_date_payment.isoformat(),
+                            date_application=form_date_application.isoformat(),
                             amount_cents=amount_cents,
                             payer=payer_value,
                             payee=payee_value,

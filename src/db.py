@@ -4,6 +4,19 @@ from typing import List, Optional, Sequence
 
 DEFAULT_TIMEOUT_SECONDS = 30
 REQUIRED_TABLES = ("transactions", "tags", "transaction_tags")
+REQUIRED_TRANSACTION_COLUMNS = {
+    "id",
+    "date_payment",
+    "date_application",
+    "amount_cents",
+    "payer",
+    "payee",
+    "category",
+    "subcategory",
+    "notes",
+    "created_at",
+    "updated_at",
+}
 
 
 def connect(db_path: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> sqlite3.Connection:
@@ -33,6 +46,10 @@ def schema_is_valid(conn: sqlite3.Connection) -> bool:
         )
         if row is None:
             return False
+    columns = conn.execute("PRAGMA table_info(transactions)").fetchall()
+    column_names = {row[1] for row in columns}
+    if not REQUIRED_TRANSACTION_COLUMNS.issubset(column_names):
+        return False
     return True
 
 

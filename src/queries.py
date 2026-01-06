@@ -4,6 +4,12 @@ from typing import Dict, Iterable, List, Optional, Tuple
 from src import db
 
 ALLOWED_DISTINCT_COLUMNS = {"payer", "payee", "category", "subcategory"}
+DATE_FIELDS = {"date_payment", "date_application"}
+DEFAULT_DATE_FIELD = "date_payment"
+DATE_FIELD_LABELS = {
+    "date_payment": "Payment date",
+    "date_application": "Application date",
+}
 
 
 def get_distinct_values(conn: sqlite3.Connection, column: str) -> List[str]:
@@ -36,7 +42,8 @@ def list_transactions(conn: sqlite3.Connection, filters: Dict[str, object]) -> L
     where_clauses: List[str] = []
     params: List[object] = []
 
-    _apply_date_filters(filters, where_clauses, params)
+    date_field = _resolve_date_field(filters.get("date_field"))
+    _apply_date_filters(date_field, filters, where_clauses, params)
     _apply_list_filter("t.payer", filters.get("payers"), where_clauses, params)
     _apply_list_filter("t.payee", filters.get("payees"), where_clauses, params)
     _apply_list_filter("t.category", filters.get("categories"), where_clauses, params)
@@ -51,7 +58,8 @@ def list_transactions(conn: sqlite3.Connection, filters: Dict[str, object]) -> L
     sql = f"""
         SELECT
             t.id,
-            t.date,
+            t.date_payment,
+            t.date_application,
             t.amount_cents,
             t.payer,
             t.payee,
@@ -64,7 +72,7 @@ def list_transactions(conn: sqlite3.Connection, filters: Dict[str, object]) -> L
         LEFT JOIN tags tg ON tg.id = tt.tag_id
         {where_sql}
         GROUP BY t.id
-        ORDER BY t.date DESC, t.id DESC
+        ORDER BY t.{date_field} DESC, t.id DESC
     """
     return db.fetch_all(conn, sql, params)
 
@@ -75,7 +83,8 @@ def get_transaction(conn: sqlite3.Connection, transaction_id: int) -> Optional[s
         """
         SELECT
             t.id,
-            t.date,
+            t.date_payment,
+            t.date_application,
             t.amount_cents,
             t.payer,
             t.payee,
@@ -94,7 +103,8 @@ def get_transaction(conn: sqlite3.Connection, transaction_id: int) -> Optional[s
 def update_transaction(
     conn: sqlite3.Connection,
     transaction_id: int,
-    date: str,
+    date_payment: str,
+    date_application: str,
     amount_cents: int,
     payer: Optional[str],
     payee: Optional[str],
@@ -107,7 +117,8 @@ def update_transaction(
         conn,
         """
         UPDATE transactions
-        SET date = ?,
+        SET date_payment = ?,
+            date_application = ?,
             amount_cents = ?,
             payer = ?,
             payee = ?,
@@ -118,7 +129,8 @@ def update_transaction(
         WHERE id = ?
         """,
         (
-            date,
+            date_payment,
+            date_application,
             amount_cents,
             payer,
             payee,
@@ -135,24 +147,34 @@ def delete_transaction(conn: sqlite3.Connection, transaction_id: int) -> None:
     db.execute(conn, "DELETE FROM transactions WHERE id = ?", (transaction_id,))
 
 
-def get_date_bounds(conn: sqlite3.Connection) -> Tuple[Optional[str], Optional[str]]:
-    row = db.fetch_one(conn, "SELECT MIN(date) AS min_date, MAX(date) AS max_date FROM transactions")
+def get_date_bounds(
+    conn: sqlite3.Connection, date_field: str
+) -> Tuple[Optional[str], Optional[str]]:
+    date_field = _resolve_date_field(date_field)
+    sql = f"SELECT MIN({date_field}) AS min_date, MAX({date_field}) AS max_date FROM transactions"
+    row = db.fetch_one(conn, sql)
     if row is None:
         return None, None
     return row["min_date"], row["max_date"]
 
 
 def _apply_date_filters(
-    filters: Dict[str, object], where_clauses: List[str], params: List[object]
+    date_field: str, filters: Dict[str, object], where_clauses: List[str], params: List[object]
 ) -> None:
     start_date = filters.get("date_start")
     end_date = filters.get("date_end")
     if start_date:
-        where_clauses.append("t.date >= ?")
+        where_clauses.append(f"t.{date_field} >= ?")
         params.append(start_date)
     if end_date:
-        where_clauses.append("t.date <= ?")
+        where_clauses.append(f"t.{date_field} <= ?")
         params.append(end_date)
+
+
+def _resolve_date_field(value: object) -> str:
+    if isinstance(value, str) and value in DATE_FIELDS:
+        return value
+    return DEFAULT_DATE_FIELD
 
 
 def _apply_list_filter(

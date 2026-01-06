@@ -11,6 +11,8 @@ NODE_MODE_OR = "or"
 NODE_MODE_AND = "and"
 TAG_MATCH_ANY = "ANY"
 TAG_MATCH_ALL = "ALL"
+DATE_FIELDS = {"date_payment", "date_application"}
+DEFAULT_DATE_FIELD = "date_payment"
 
 
 def compute_comparison(
@@ -19,6 +21,7 @@ def compute_comparison(
     groups: List[Group],
     mode: str,
     node_mode: str,
+    date_field: str = DEFAULT_DATE_FIELD,
     or_nodes: Optional[List[Node]] = None,
     and_entries: Optional[List[Node]] = None,
     and_tags: Optional[List[str]] = None,
@@ -29,9 +32,11 @@ def compute_comparison(
     if node_mode not in {NODE_MODE_OR, NODE_MODE_AND}:
         raise ValueError("Invalid node mode")
 
+    date_field = _resolve_date_field(date_field)
+
     if node_mode == NODE_MODE_OR:
         nodes = or_nodes or []
-        return _compute_for_nodes(conn, periods, groups, mode, nodes)
+        return _compute_for_nodes(conn, periods, groups, mode, date_field, nodes)
 
     entries = and_entries or []
     tags = [tag.strip().lower() for tag in (and_tags or []) if tag.strip()]
@@ -47,13 +52,13 @@ def compute_comparison(
                 combined_sql = node_sql
                 combined_params = node_params
             nodes.append((entry.label, combined_sql, combined_params))
-        return _compute_for_custom_nodes(conn, periods, groups, mode, nodes)
+        return _compute_for_custom_nodes(conn, periods, groups, mode, date_field, nodes)
 
     if not tags:
         return _empty_frame()
 
     tag_nodes = [Node(label=tag, kind="tag", tag=tag) for tag in tags]
-    return _compute_for_nodes(conn, periods, groups, mode, tag_nodes)
+    return _compute_for_nodes(conn, periods, groups, mode, date_field, tag_nodes)
 
 
 def _compute_for_nodes(
@@ -61,6 +66,7 @@ def _compute_for_nodes(
     periods: List[Period],
     groups: List[Group],
     mode: str,
+    date_field: str,
     nodes: List[Node],
 ) -> pd.DataFrame:
     if not nodes:
@@ -70,7 +76,7 @@ def _compute_for_nodes(
     for node in nodes:
         node_sql, node_params = _build_node_predicate(node)
         custom_nodes.append((node.label, node_sql, node_params))
-    return _compute_for_custom_nodes(conn, periods, groups, mode, custom_nodes)
+    return _compute_for_custom_nodes(conn, periods, groups, mode, date_field, custom_nodes)
 
 
 def _compute_for_custom_nodes(
@@ -78,6 +84,7 @@ def _compute_for_custom_nodes(
     periods: List[Period],
     groups: List[Group],
     mode: str,
+    date_field: str,
     nodes: List[Tuple[str, str, List[object]]],
 ) -> pd.DataFrame:
     if not nodes:
@@ -88,7 +95,7 @@ def _compute_for_custom_nodes(
         for group in groups:
             for node_label, node_sql, node_params in nodes:
                 result = _aggregate_cell(
-                    conn, period, group, mode, node_label, node_sql, node_params
+                    conn, period, group, mode, date_field, node_label, node_sql, node_params
                 )
                 rows.append(result)
     return pd.DataFrame(rows)
@@ -114,10 +121,12 @@ def _aggregate_cell(
     period: Period,
     group: Group,
     mode: str,
+    date_field: str,
     node_label: str,
     node_sql: str,
     node_params: List[object],
 ) -> dict:
+    date_field = _resolve_date_field(date_field)
     inflow_sql, outflow_sql, internal_sql, group_any_sql, group_params = _group_predicates(
         group, mode
     )
@@ -129,7 +138,7 @@ def _aggregate_cell(
             COALESCE(SUM(CASE WHEN {outflow_sql} THEN amount_cents ELSE 0 END), 0) AS outflow_cents,
             COALESCE(SUM(CASE WHEN {internal_sql} THEN amount_cents ELSE 0 END), 0) AS internal_cents
         FROM transactions t
-        WHERE t.date >= ? AND t.date <= ? AND ({node_sql})
+        WHERE t.{date_field} >= ? AND t.{date_field} <= ? AND ({node_sql})
     """
     params = [period.start_date, period.end_date] + node_params + group_params
     row = conn.execute(sql, params).fetchone()
@@ -204,6 +213,12 @@ def _build_tag_filter(tags: List[str], match: str) -> Tuple[Optional[str], List[
             params.append(tag)
         return " AND ".join(parts), params
     raise ValueError("Invalid tag match")
+
+
+def _resolve_date_field(value: object) -> str:
+    if isinstance(value, str) and value in DATE_FIELDS:
+        return value
+    return DEFAULT_DATE_FIELD
 
 
 def _group_predicates(group: Group, mode: str) -> Tuple[str, str, str, str, List[object]]:

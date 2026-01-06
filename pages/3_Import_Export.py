@@ -34,7 +34,7 @@ try:
     with tab_import:
         st.subheader("CSV import")
         st.text_input("Import directory", value=st.session_state.csv_import_dir, key="csv_import_dir")
-        st.caption("Upload a semicolon-separated CSV file.")
+        st.caption("Upload a semicolon-separated CSV file with both date fields.")
 
         uploaded = st.file_uploader("Choose a CSV file", type=["csv"], key="csv_import_file")
         if uploaded is not None:
@@ -72,12 +72,25 @@ try:
         st.subheader("CSV export")
         st.text_input("Export directory", value=st.session_state.csv_export_dir, key="csv_export_dir")
 
-        min_date, max_date = queries.get_date_bounds(conn)
+        date_field_labels = {
+            "Payment date": "date_payment",
+            "Application date": "date_application",
+        }
+        selected_label = st.selectbox(
+            "Date field for range",
+            list(date_field_labels.keys()),
+            key="export_date_field",
+        )
+        date_field = date_field_labels[selected_label]
+
+        min_date, max_date = queries.get_date_bounds(conn, date_field)
         if min_date is None or max_date is None:
             st.warning("No transactions available to export.")
         else:
-            start_default = st.session_state.get("export_start_date")
-            end_default = st.session_state.get("export_end_date")
+            start_key = f"export_start_date_{date_field}"
+            end_key = f"export_end_date_{date_field}"
+            start_default = st.session_state.get(start_key)
+            end_default = st.session_state.get(end_key)
             if start_default is None:
                 start_default = dt.date.fromisoformat(min_date)
             elif isinstance(start_default, str):
@@ -89,9 +102,9 @@ try:
 
             date_col1, date_col2 = st.columns(2)
             with date_col1:
-                start_date = st.date_input("Start date", value=start_default, key="export_start_date")
+                start_date = st.date_input("Start date", value=start_default, key=start_key)
             with date_col2:
-                end_date = st.date_input("End date", value=end_default, key="export_end_date")
+                end_date = st.date_input("End date", value=end_default, key=end_key)
 
             payer_options = queries.get_distinct_values(conn, "payer")
             payee_options = queries.get_distinct_values(conn, "payee")
@@ -118,6 +131,7 @@ try:
                     st.error("Start date must be before end date.")
                 else:
                     filters = {
+                        "date_field": date_field,
                         "date_start": start_date.isoformat(),
                         "date_end": end_date.isoformat(),
                         "payers": _convert_empty_selection(payer_filter),

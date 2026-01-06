@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS transactions (
   id INTEGER PRIMARY KEY,
-  date TEXT NOT NULL,
+  date_payment TEXT NOT NULL,
+  date_application TEXT NOT NULL,
   amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
   payer TEXT NULL,
   payee TEXT NULL,
@@ -12,8 +13,11 @@ CREATE TABLE IF NOT EXISTS transactions (
   CHECK (payer IS NULL OR payee IS NULL OR payer <> payee)
 );
 
-CREATE INDEX IF NOT EXISTS idx_transactions_date
-  ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_date_payment
+  ON transactions(date_payment);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_date_application
+  ON transactions(date_application);
 
 CREATE INDEX IF NOT EXISTS idx_transactions_category_subcategory
   ON transactions(category, subcategory);
