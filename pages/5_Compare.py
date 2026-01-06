@@ -4,7 +4,7 @@ from typing import List, Optional
 import sqlite3
 import streamlit as st
 
-from src import comparison_engine, db, plotting, queries, tags, ui_widgets
+from src import comparison_engine, db, plotting, queries, tags
 from src.types import Group, Node, Period
 
 st.title("Compare")
@@ -143,14 +143,16 @@ try:
                 value=f"Group {idx + 1}",
                 key=f"group_label_{idx}",
             )
-            payers = ui_widgets.typeahead_multi_select(
+            payers = st.multiselect(
                 "Payers",
-                payer_options,
+                options=payer_options,
+                default=[],
                 key=f"group_{idx}_payers",
             )
-            payees = ui_widgets.typeahead_multi_select(
+            payees = st.multiselect(
                 "Payees",
-                payee_options,
+                options=payee_options,
+                default=[],
                 key=f"group_{idx}_payees",
             )
             groups.append(
