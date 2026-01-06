@@ -1,5 +1,5 @@
 import sqlite3
-from typing import Iterable, List
+from typing import Iterable, List, Tuple
 
 from src import db
 
@@ -27,6 +27,37 @@ def parse_tags(raw: str) -> List[str]:
 def list_tags(conn: sqlite3.Connection) -> List[str]:
     rows = db.fetch_all(conn, "SELECT name FROM tags ORDER BY name")
     return [row["name"] for row in rows]
+
+
+def tag_counts(conn: sqlite3.Connection) -> List[Tuple[str, int]]:
+    rows = db.fetch_all(
+        conn,
+        """
+        SELECT tg.name, COUNT(tt.transaction_id) AS count
+        FROM tags tg
+        LEFT JOIN transaction_tags tt ON tt.tag_id = tg.id
+        GROUP BY tg.id
+        ORDER BY tg.name
+        """,
+    )
+    return [(row["name"], int(row["count"])) for row in rows]
+
+
+def rename_tag(conn: sqlite3.Connection, old_name: str, new_name: str) -> None:
+    normalized_old = normalize_tag(old_name)
+    normalized_new = normalize_tag(new_name)
+    if not normalized_new:
+        raise ValueError("Tag name cannot be empty")
+    db.execute(
+        conn,
+        "UPDATE tags SET name = ? WHERE name = ?",
+        (normalized_new, normalized_old),
+    )
+
+
+def delete_tag(conn: sqlite3.Connection, name: str) -> None:
+    normalized = normalize_tag(name)
+    db.execute(conn, "DELETE FROM tags WHERE name = ?", (normalized,))
 
 
 def upsert_tag(conn: sqlite3.Connection, name: str) -> int:
