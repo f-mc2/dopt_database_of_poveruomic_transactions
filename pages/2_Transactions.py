@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import sqlite3
 import streamlit as st
@@ -29,6 +29,22 @@ def normalize_required(value: Optional[str], lower: bool = False) -> str:
         raise ValueError("Value is required")
     return cleaned.lower() if lower else cleaned
 
+
+def choose_input(
+    new_value: Optional[str],
+    existing_value: Optional[str],
+    required: bool,
+    lower: bool = False,
+) -> Tuple[Optional[str], Optional[str]]:
+    if new_value and new_value.strip():
+        cleaned = new_value.strip()
+        return (cleaned.lower() if lower else cleaned), None
+    if existing_value:
+        cleaned = existing_value.strip()
+        return (cleaned.lower() if lower else cleaned), None
+    if required:
+        return None, "Value is required"
+    return None, None
 
 
 
@@ -81,35 +97,40 @@ try:
         )
         form_amount = st.text_input("Amount", value="0.00", key="add_amount")
 
-        form_payer = ui_widgets.select_or_add(
-            "Payer",
+        payer_new = st.text_input("New payer", key="add_payer_new")
+        payer_existing = ui_widgets.typeahead_single_select(
+            "Select existing payer",
             payer_options,
-            key="add_payer",
-            allow_empty=True,
+            key="add_payer_existing",
         )
-        form_payee = ui_widgets.select_or_add(
-            "Payee",
+
+        payee_new = st.text_input("New payee", key="add_payee_new")
+        payee_existing = ui_widgets.typeahead_single_select(
+            "Select existing payee",
             payee_options,
-            key="add_payee",
-            allow_empty=True,
+            key="add_payee_existing",
         )
-        form_payment_type = ui_widgets.select_or_add(
-            "Payment type",
+
+        payment_type_new = st.text_input("New payment type", key="add_payment_type_new")
+        payment_type_existing = ui_widgets.typeahead_single_select(
+            "Select existing payment type",
             payment_type_options,
-            key="add_payment_type",
-            allow_empty=True,
+            key="add_payment_type_existing",
         )
-        form_category = ui_widgets.select_or_add(
-            "Category",
+
+        category_new = st.text_input("New category", key="add_category_new")
+        category_existing = ui_widgets.typeahead_single_select(
+            "Select existing category",
             category_options,
-            key="add_category",
-            allow_empty=False,
+            key="add_category_existing",
+            include_empty=False,
         )
-        form_subcategory = ui_widgets.select_or_add(
-            "Subcategory",
+
+        subcategory_new = st.text_input("New subcategory", key="add_subcategory_new")
+        subcategory_existing = ui_widgets.typeahead_single_select(
+            "Select existing subcategory",
             subcategory_options,
-            key="add_subcategory",
-            allow_empty=True,
+            key="add_subcategory_existing",
         )
         form_notes = st.text_area("Notes", key="add_notes")
 
@@ -133,16 +154,32 @@ try:
         except ValueError as exc:
             errors.append(str(exc))
 
-        try:
-            category_value = normalize_required(form_category, lower=True)
-        except ValueError as exc:
-            errors.append(str(exc))
+        payer_value, payer_error = choose_input(payer_new, payer_existing, required=False)
+        if payer_error:
+            errors.append(payer_error)
+
+        payee_value, payee_error = choose_input(payee_new, payee_existing, required=False)
+        if payee_error:
+            errors.append(payee_error)
+
+        payment_type_value, payment_error = choose_input(
+            payment_type_new, payment_type_existing, required=False, lower=True
+        )
+        if payment_error:
+            errors.append(payment_error)
+
+        category_value, category_error = choose_input(
+            category_new, category_existing, required=True, lower=True
+        )
+        if category_error:
+            errors.append(category_error)
             category_value = ""
 
-        payer_value = normalize_optional(form_payer)
-        payee_value = normalize_optional(form_payee)
-        payment_type_value = normalize_optional(form_payment_type, lower=True)
-        subcategory_value = normalize_optional(form_subcategory, lower=True)
+        subcategory_value, subcategory_error = choose_input(
+            subcategory_new, subcategory_existing, required=False, lower=True
+        )
+        if subcategory_error:
+            errors.append(subcategory_error)
         notes_value_clean = normalize_optional(form_notes)
 
         if payer_value and payee_value and payer_value == payee_value:
