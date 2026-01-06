@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
   payer TEXT NULL,
   payee TEXT NULL,
+  payment_type TEXT NULL,
   category TEXT NOT NULL,
   subcategory TEXT NULL,
   notes TEXT NULL,

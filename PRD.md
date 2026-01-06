@@ -64,6 +64,7 @@ Fields:
 - `amount_cents` INTEGER NOT NULL (currency magnitude)
 - `payer` TEXT NULL
 - `payee` TEXT NULL
+- `payment_type` TEXT NULL
 - `category` TEXT NOT NULL (stored lowercase)
 - `subcategory` TEXT NULL (stored lowercase)
 - `notes` TEXT NULL
@@ -118,7 +119,7 @@ Required columns:
 - `category` (stored lowercase)
 
 Optional columns:
-- `payer`, `payee`, `subcategory`, `notes`
+- `payer`, `payee`, `payment_type`, `subcategory`, `notes`
 - `tags` (comma-separated string, e.g. `rent,home`)
 
 Rules:
@@ -156,14 +157,14 @@ Transactions page supports:
 - free-text search over payer/payee/category/subcategory/notes (and optionally tags)
 
 Display:
-- Table showing `id`, date_payment, date_application, amount, payer, payee, category, subcategory, tags, notes.
+- Table showing `id`, date_payment, date_application, amount, payer, payee, payment_type, category, subcategory, tags, notes.
 - Each row supports:
   - Edit action
   - Delete action (with confirmation)
 
 ### 6.2 Edit form (single transaction)
 Editable fields:
-- date_payment, date_application, amount, payer, payee, category, subcategory, tags, notes
+- date_payment, date_application, amount, payer, payee, payment_type, category, subcategory, tags, notes
 
 Selection UI:
 - payer/payee/category/subcategory: choose from existing distinct values; include “(empty)” and an “Add new…” path.

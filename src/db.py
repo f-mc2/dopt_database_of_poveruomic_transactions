@@ -11,6 +11,7 @@ REQUIRED_TRANSACTION_COLUMNS = {
     "amount_cents",
     "payer",
     "payee",
+    "payment_type",
     "category",
     "subcategory",
     "notes",

@@ -18,6 +18,13 @@ VALUE_COLUMNS: Dict[str, Dict[str, object]] = {
         "rename_sql": "UPDATE transactions SET payee = ? WHERE payee = ?",
         "clear_sql": "UPDATE transactions SET payee = NULL WHERE payee = ?",
     },
+    "payment_type": {
+        "label": "Payment type",
+        "lower": True,
+        "select_sql": "SELECT payment_type AS value, COUNT(*) AS count FROM transactions WHERE payment_type IS NOT NULL GROUP BY payment_type ORDER BY count DESC, payment_type",
+        "rename_sql": "UPDATE transactions SET payment_type = ? WHERE payment_type = ?",
+        "clear_sql": "UPDATE transactions SET payment_type = NULL WHERE payment_type = ?",
+    },
     "category": {
         "label": "Category",
         "lower": True,

@@ -16,7 +16,7 @@ try:
     conn = db.connect(st.session_state.db_path)
 
     st.subheader("Transaction values")
-    for column in ["payer", "payee", "category", "subcategory"]:
+    for column in ["payer", "payee", "payment_type", "category", "subcategory"]:
         config = values.VALUE_COLUMNS[column]
         label = config["label"]
         st.markdown(f"### {label}")

@@ -3,7 +3,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 from src import db
 
-ALLOWED_DISTINCT_COLUMNS = {"payer", "payee", "category", "subcategory"}
+ALLOWED_DISTINCT_COLUMNS = {"payer", "payee", "payment_type", "category", "subcategory"}
 DATE_FIELDS = {"date_payment", "date_application"}
 DEFAULT_DATE_FIELD = "date_payment"
 DATE_FIELD_LABELS = {
@@ -18,6 +18,7 @@ def get_distinct_values(conn: sqlite3.Connection, column: str) -> List[str]:
     sql_map = {
         "payer": "SELECT DISTINCT payer AS value FROM transactions WHERE payer IS NOT NULL ORDER BY payer",
         "payee": "SELECT DISTINCT payee AS value FROM transactions WHERE payee IS NOT NULL ORDER BY payee",
+        "payment_type": "SELECT DISTINCT payment_type AS value FROM transactions WHERE payment_type IS NOT NULL ORDER BY payment_type",
         "category": "SELECT DISTINCT category AS value FROM transactions WHERE category IS NOT NULL ORDER BY category",
         "subcategory": "SELECT DISTINCT subcategory AS value FROM transactions WHERE subcategory IS NOT NULL ORDER BY subcategory",
     }
@@ -63,6 +64,7 @@ def list_transactions(conn: sqlite3.Connection, filters: Dict[str, object]) -> L
             t.amount_cents,
             t.payer,
             t.payee,
+            t.payment_type,
             t.category,
             t.subcategory,
             t.notes,
@@ -88,6 +90,7 @@ def get_transaction(conn: sqlite3.Connection, transaction_id: int) -> Optional[s
             t.amount_cents,
             t.payer,
             t.payee,
+            t.payment_type,
             t.category,
             t.subcategory,
             t.notes,
@@ -108,6 +111,7 @@ def update_transaction(
     amount_cents: int,
     payer: Optional[str],
     payee: Optional[str],
+    payment_type: Optional[str],
     category: str,
     subcategory: Optional[str],
     notes: Optional[str],
@@ -122,6 +126,7 @@ def update_transaction(
             amount_cents = ?,
             payer = ?,
             payee = ?,
+            payment_type = ?,
             category = ?,
             subcategory = ?,
             notes = ?,
@@ -134,6 +139,7 @@ def update_transaction(
             amount_cents,
             payer,
             payee,
+            payment_type,
             category,
             subcategory,
             notes,
@@ -141,6 +147,57 @@ def update_transaction(
             transaction_id,
         ),
     )
+
+
+def insert_transaction(
+    conn: sqlite3.Connection,
+    date_payment: str,
+    date_application: str,
+    amount_cents: int,
+    payer: Optional[str],
+    payee: Optional[str],
+    payment_type: Optional[str],
+    category: str,
+    subcategory: Optional[str],
+    notes: Optional[str],
+    created_at: str,
+    updated_at: str,
+) -> int:
+    cursor = db.execute(
+        conn,
+        """
+        INSERT INTO transactions (
+            date_payment,
+            date_application,
+            amount_cents,
+            payer,
+            payee,
+            payment_type,
+            category,
+            subcategory,
+            notes,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            date_payment,
+            date_application,
+            amount_cents,
+            payer,
+            payee,
+            payment_type,
+            category,
+            subcategory,
+            notes,
+            created_at,
+            updated_at,
+        ),
+    )
+    if cursor.lastrowid is None:
+        raise ValueError("Failed to insert transaction")
+    return int(cursor.lastrowid)
 
 
 def delete_transaction(conn: sqlite3.Connection, transaction_id: int) -> None:

@@ -34,6 +34,25 @@ def typeahead_multi_select(label: str, options: Iterable[str], key: str) -> List
     return list(st.session_state[state_key])
 
 
+def typeahead_single_select(
+    label: str,
+    options: Iterable[str],
+    key: str,
+    include_empty: bool = True,
+) -> Optional[str]:
+    option_list = list(options)
+    search = st.text_input(f"Search {label}", key=f"{key}_search")
+    filtered = [opt for opt in option_list if search.lower() in opt.lower()]
+    display_options = filtered if filtered else [_NO_MATCHES]
+    if include_empty:
+        display_options = [_EMPTY_LABEL] + display_options
+
+    selection = st.selectbox(label, display_options, key=f"{key}_select")
+    if selection in (_NO_MATCHES, _EMPTY_LABEL):
+        return None
+    return selection
+
+
 def select_or_add(
     label: str,
     options: Iterable[str],

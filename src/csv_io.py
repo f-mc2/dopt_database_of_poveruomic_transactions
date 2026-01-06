@@ -8,13 +8,14 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 from src import amounts, tags
 
 REQUIRED_COLUMNS = {"date_payment", "date_application", "amount", "category"}
-OPTIONAL_COLUMNS = {"payer", "payee", "subcategory", "notes", "tags"}
+OPTIONAL_COLUMNS = {"payer", "payee", "payment_type", "subcategory", "notes", "tags"}
 EXPORT_COLUMNS = [
     "date_payment",
     "date_application",
     "amount",
     "payer",
     "payee",
+    "payment_type",
     "category",
     "subcategory",
     "notes",
@@ -29,6 +30,7 @@ class ParsedRow:
     amount_cents: int
     payer: Optional[str]
     payee: Optional[str]
+    payment_type: Optional[str]
     category: str
     subcategory: Optional[str]
     notes: Optional[str]
@@ -100,6 +102,7 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
 
         payer_value = _normalize_optional(row.get("payer"))
         payee_value = _normalize_optional(row.get("payee"))
+        payment_type_value = _normalize_optional(row.get("payment_type"), lower=True)
         subcategory_value = _normalize_optional(row.get("subcategory"), lower=True)
         notes_value = _normalize_optional(row.get("notes"))
         tag_values = tags.parse_tags(row.get("tags") or "")
@@ -118,6 +121,7 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
                 amount_cents=amount_cents,
                 payer=payer_value,
                 payee=payee_value,
+                payment_type=payment_type_value,
                 category=category_value,
                 subcategory=subcategory_value,
                 notes=notes_value,
@@ -139,13 +143,14 @@ def insert_transactions(conn, rows: Sequence[ParsedRow]) -> None:
                 amount_cents,
                 payer,
                 payee,
+                payment_type,
                 category,
                 subcategory,
                 notes,
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row.date_payment,
@@ -153,6 +158,7 @@ def insert_transactions(conn, rows: Sequence[ParsedRow]) -> None:
                 row.amount_cents,
                 row.payer,
                 row.payee,
+                row.payment_type,
                 row.category,
                 row.subcategory,
                 row.notes,
@@ -175,6 +181,7 @@ def build_export_rows(rows: Iterable[Union[Dict[str, object], object]]) -> List[
         amount_value = _row_value(row, "amount_cents", 0)
         payer_value = _row_value(row, "payer", "")
         payee_value = _row_value(row, "payee", "")
+        payment_type_value = _row_value(row, "payment_type", "")
         category_value = _row_value(row, "category", "")
         subcategory_value = _row_value(row, "subcategory", "")
         notes_value = _row_value(row, "notes", "")
@@ -186,6 +193,7 @@ def build_export_rows(rows: Iterable[Union[Dict[str, object], object]]) -> List[
                 "amount": amounts.format_cents(int(amount_value)),
                 "payer": payer_value or "",
                 "payee": payee_value or "",
+                "payment_type": payment_type_value or "",
                 "category": category_value or "",
                 "subcategory": subcategory_value or "",
                 "notes": notes_value or "",

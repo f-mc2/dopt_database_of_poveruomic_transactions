@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import sqlite3
 import streamlit as st
@@ -30,8 +30,21 @@ def normalize_required(value: Optional[str], lower: bool = False) -> str:
     return cleaned.lower() if lower else cleaned
 
 
-def convert_empty_selection(selected: List[str]) -> List[Optional[str]]:
-    return [None if item == "(empty)" else item for item in selected]
+def resolve_input(
+    new_value: Optional[str],
+    existing_value: Optional[str],
+    required: bool,
+    lower: bool = False,
+) -> Tuple[Optional[str], Optional[str]]:
+    if new_value and new_value.strip():
+        cleaned = new_value.strip()
+        return (cleaned.lower() if lower else cleaned), None
+    if existing_value:
+        cleaned = existing_value.strip()
+        return (cleaned.lower() if lower else cleaned), None
+    if required:
+        return None, "Value is required"
+    return None, None
 
 
 conn: Optional[sqlite3.Connection] = None
@@ -40,69 +53,21 @@ try:
 
     payer_options = queries.get_distinct_values(conn, "payer")
     payee_options = queries.get_distinct_values(conn, "payee")
+    payment_type_options = queries.get_distinct_values(conn, "payment_type")
     category_options = queries.get_distinct_values(conn, "category")
     subcategory_options = queries.get_distinct_values(conn, "subcategory")
     tag_options = tags.list_tags(conn)
 
-    date_field_labels = {
-        "Payment date": "date_payment",
-        "Application date": "date_application",
-    }
-    selected_label = st.selectbox(
-        "Filter by date field",
-        list(date_field_labels.keys()),
-        key="tx_date_field",
-    )
-    date_field = date_field_labels[selected_label]
+    st.subheader("Search")
+    search_text = st.text_input("Search transactions", key="tx_search")
 
-    min_date, max_date = queries.get_date_bounds(conn, date_field)
-    today = dt.date.today()
-    start_default = dt.date.fromisoformat(min_date) if min_date else today
-    end_default = dt.date.fromisoformat(max_date) if max_date else today
-
-    st.subheader("Filters")
-    date_col1, date_col2 = st.columns(2)
-    with date_col1:
-        start_date = st.date_input(
-            "Start date", value=start_default, key=f"tx_filter_start_{date_field}"
-        )
-    with date_col2:
-        end_date = st.date_input("End date", value=end_default, key=f"tx_filter_end_{date_field}")
-
-    search_text = st.text_input("Search text", key="tx_filter_search")
-
-    payer_filter = ui_widgets.typeahead_multi_select(
-        "Payers", ["(empty)"] + payer_options, key="tx_filter_payers"
-    )
-    payee_filter = ui_widgets.typeahead_multi_select(
-        "Payees", ["(empty)"] + payee_options, key="tx_filter_payees"
-    )
-    category_filter = ui_widgets.typeahead_multi_select(
-        "Categories", category_options, key="tx_filter_categories"
-    )
-    subcategory_filter = ui_widgets.typeahead_multi_select(
-        "Subcategories", ["(empty)"] + subcategory_options, key="tx_filter_subcategories"
-    )
-    tag_filter = ui_widgets.typeahead_multi_select("Tags", tag_options, key="tx_filter_tags")
-
-    filters = {
-        "date_field": date_field,
-        "date_start": start_date.isoformat() if start_date else None,
-        "date_end": end_date.isoformat() if end_date else None,
-        "payers": convert_empty_selection(payer_filter),
-        "payees": convert_empty_selection(payee_filter),
-        "categories": category_filter,
-        "subcategories": convert_empty_selection(subcategory_filter),
-        "tags": tag_filter,
-        "search": search_text,
-    }
-
-    transactions = queries.list_transactions(conn, filters)
+    transactions = queries.list_transactions(conn, {"search": search_text})
 
     st.subheader("Results")
     if not transactions:
-        st.info("No transactions match the current filters.")
+        st.info("No transactions match the current search.")
     else:
+        table_height = 720
         table_rows = []
         for row in transactions:
             table_rows.append(
@@ -113,13 +78,135 @@ try:
                     "amount": amounts.format_cents(int(row["amount_cents"])),
                     "payer": row["payer"] or "",
                     "payee": row["payee"] or "",
+                    "payment_type": row["payment_type"] or "",
                     "category": row["category"],
                     "subcategory": row["subcategory"] or "",
                     "tags": row["tags"] or "",
                     "notes": row["notes"] or "",
                 }
             )
-        st.dataframe(table_rows, use_container_width=True)
+        st.dataframe(table_rows, use_container_width=True, height=table_height)
+
+    st.subheader("Add transaction")
+    with st.form("add_transaction"):
+        today = dt.date.today()
+        form_date_payment = st.date_input("Payment date", value=today, key="add_date_payment")
+        form_date_application = st.date_input(
+            "Application date", value=today, key="add_date_application"
+        )
+        form_amount_value = st.number_input(
+            "Amount", min_value=0.0, step=0.01, format="%.2f", key="add_amount"
+        )
+
+        payer_new = st.text_input("New payer", key="add_payer_new")
+        payer_existing = ui_widgets.typeahead_single_select(
+            "Select existing payer", payer_options, key="add_payer_existing"
+        )
+
+        payee_new = st.text_input("New payee", key="add_payee_new")
+        payee_existing = ui_widgets.typeahead_single_select(
+            "Select existing payee", payee_options, key="add_payee_existing"
+        )
+
+        payment_type_new = st.text_input("New payment type", key="add_payment_type_new")
+        payment_type_existing = ui_widgets.typeahead_single_select(
+            "Select existing payment type",
+            payment_type_options,
+            key="add_payment_type_existing",
+        )
+
+        category_new = st.text_input("New category", key="add_category_new")
+        category_existing = ui_widgets.typeahead_single_select(
+            "Select existing category",
+            category_options,
+            key="add_category_existing",
+            include_empty=False,
+        )
+
+        subcategory_new = st.text_input("New subcategory", key="add_subcategory_new")
+        subcategory_existing = ui_widgets.typeahead_single_select(
+            "Select existing subcategory",
+            subcategory_options,
+            key="add_subcategory_existing",
+        )
+
+        notes_value = st.text_area("Notes", key="add_notes")
+
+        tags_existing = st.multiselect(
+            "Select existing tags", options=tag_options, default=[], key="add_tags_existing"
+        )
+        tags_new = st.text_input("Add new tags (comma-separated)", key="add_tags_new")
+
+        submitted_new = st.form_submit_button("Add transaction")
+
+    if submitted_new:
+        errors: List[str] = []
+        try:
+            amount_cents = amounts.parse_amount_to_cents(f"{form_amount_value:.2f}")
+        except ValueError as exc:
+            errors.append(str(exc))
+
+        payer_value, payer_error = resolve_input(payer_new, payer_existing, required=False)
+        if payer_error:
+            errors.append(payer_error)
+
+        payee_value, payee_error = resolve_input(payee_new, payee_existing, required=False)
+        if payee_error:
+            errors.append(payee_error)
+
+        payment_type_value, payment_error = resolve_input(
+            payment_type_new, payment_type_existing, required=False, lower=True
+        )
+        if payment_error:
+            errors.append(payment_error)
+
+        category_value, category_error = resolve_input(
+            category_new, category_existing, required=True, lower=True
+        )
+        if category_error:
+            errors.append(category_error)
+
+        subcategory_value, subcategory_error = resolve_input(
+            subcategory_new, subcategory_existing, required=False, lower=True
+        )
+        if subcategory_error:
+            errors.append(subcategory_error)
+
+        notes_value_clean = normalize_optional(notes_value)
+
+        if payer_value and payee_value and payer_value == payee_value:
+            errors.append("Payer and payee must be different")
+
+        combined_tags = []
+        for tag_name in list(tags_existing) + tags.parse_tags(tags_new):
+            normalized = tags.normalize_tag(tag_name)
+            if not normalized or normalized in combined_tags:
+                continue
+            combined_tags.append(normalized)
+
+        if errors:
+            st.error("; ".join(errors))
+        else:
+            timestamp = dt.datetime.now().isoformat(timespec="seconds")
+            with conn:
+                transaction_id = queries.insert_transaction(
+                    conn,
+                    date_payment=form_date_payment.isoformat(),
+                    date_application=form_date_application.isoformat(),
+                    amount_cents=amount_cents,
+                    payer=payer_value,
+                    payee=payee_value,
+                    payment_type=payment_type_value,
+                    category=category_value,
+                    subcategory=subcategory_value,
+                    notes=notes_value_clean,
+                    created_at=timestamp,
+                    updated_at=timestamp,
+                )
+                if combined_tags:
+                    tags.set_transaction_tags(conn, transaction_id, combined_tags)
+            st.success("Transaction added.")
+            st.rerun()
 
     st.subheader("Edit or delete")
     if not transactions:
@@ -133,7 +220,9 @@ try:
             if row is None:
                 return str(value)
             amount_value = amounts.format_cents(int(row["amount_cents"]))
-            return f"{value} • pay {row['date_payment']} • app {row['date_application']} • {amount_value}"
+            return (
+                f"{value} • pay {row['date_payment']} • app {row['date_application']} • {amount_value}"
+            )
 
         selected_id = st.selectbox(
             "Transaction ID",
@@ -182,6 +271,13 @@ try:
                     allow_empty=True,
                     current=selected_row["payee"],
                 )
+                form_payment_type = ui_widgets.select_or_add(
+                    "Payment type",
+                    payment_type_options,
+                    key=f"tx_payment_type_{selected_id}",
+                    allow_empty=True,
+                    current=selected_row["payment_type"],
+                )
                 form_category = ui_widgets.select_or_add(
                     "Category",
                     category_options,
@@ -228,6 +324,7 @@ try:
                     errors.append(str(exc))
                     category_value = ""
 
+                payment_type_value = normalize_optional(form_payment_type, lower=True)
                 payer_value = normalize_optional(form_payer)
                 payee_value = normalize_optional(form_payee)
                 subcategory_value = normalize_optional(form_subcategory, lower=True)
@@ -256,6 +353,7 @@ try:
                             amount_cents=amount_cents,
                             payer=payer_value,
                             payee=payee_value,
+                            payment_type=payment_type_value,
                             category=category_value,
                             subcategory=subcategory_value,
                             notes=notes_value,
