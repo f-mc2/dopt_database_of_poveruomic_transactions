@@ -19,6 +19,19 @@ def get_distinct_values(conn: sqlite3.Connection, column: str) -> List[str]:
     return [row["value"] for row in rows]
 
 
+def get_category_subcategory_pairs(conn: sqlite3.Connection) -> List[Tuple[str, str]]:
+    rows = db.fetch_all(
+        conn,
+        """
+        SELECT DISTINCT category, subcategory
+        FROM transactions
+        WHERE subcategory IS NOT NULL
+        ORDER BY category, subcategory
+        """,
+    )
+    return [(row["category"], row["subcategory"]) for row in rows]
+
+
 def list_transactions(conn: sqlite3.Connection, filters: Dict[str, object]) -> List[sqlite3.Row]:
     where_clauses: List[str] = []
     params: List[object] = []
