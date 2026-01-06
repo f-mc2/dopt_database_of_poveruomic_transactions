@@ -162,6 +162,8 @@ def _aggregate_cell(
 
 
 def _build_node_predicate(node: Node) -> Tuple[str, List[object]]:
+    if node.kind == "all":
+        return "1", []
     if node.kind == "category":
         return "t.category = ?", [node.category]
     if node.kind == "subcategory":

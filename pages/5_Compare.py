@@ -25,6 +25,7 @@ def _build_or_nodes(
     tags_list: List[str],
 ) -> List[Node]:
     nodes: List[Node] = []
+    nodes.append(Node(label="All categories", kind="all"))
     for category in categories:
         nodes.append(Node(label=category, kind="category", category=category))
     for category, subcategory in sub_pairs:
