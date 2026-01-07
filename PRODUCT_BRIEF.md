@@ -32,7 +32,7 @@ safe database backups.
 - SQLite via Python sqlite3 with WAL and foreign keys enabled.
 - Normalized tags (tags, transaction_tags).
 - Amounts stored as integer cents only.
-- Case-insensitive search; finance-domain values stored in lowercase.
+- Case-insensitive search; finance-domain values stored in lowercase (notes preserve case).
 - Payer and payee must differ on every transaction (cannot be equal or both NULL).
 - Settings DB to persist UI preferences (theme, recent DBs, configured directories).
 
@@ -56,9 +56,12 @@ safe database backups.
 - Adding a transaction stores amounts as integer cents and normalizes finance fields to lowercase.
 - Editing a transaction updates tags through normalized tables with no duplicates.
 - Deleting a transaction requires confirmation and removes related tag links.
+- CSV import allows only dot-decimal amounts (no commas or thousands separators) and accepts
+  a single date by copying it to the other date field before insert.
 - Comparison page supports up to 5 periods and 5 groups, and produces tabular + chart outputs for
   both role and matched-only modes.
 - Manage Values can rename/merge payer, payee, category, subcategory, payment_type, and tags; category
   cannot be deleted.
 - Backup uses SQLite's online backup API to write a consistent snapshot to the configured directory.
 - Database enforces payer/payee invariants with CHECK constraints.
+- Export uses a date field selector (default date_application) and includes both date columns.
