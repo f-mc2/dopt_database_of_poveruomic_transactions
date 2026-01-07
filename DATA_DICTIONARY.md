@@ -4,12 +4,17 @@ This document is the single source of truth for persisted fields and their meani
 It covers both the finance database and the app settings database.
 
 ## Conventions
-- All text values are trimmed and stored in lowercase.
+- Finance-domain text values are trimmed and stored in lowercase:
+  payer, payee, category, subcategory, payment_type, tag names.
+- Notes are trimmed but preserve case.
+- Settings DB paths are stored verbatim (case-preserving).
 - Empty strings become NULL for nullable fields.
 - Dates use ISO format YYYY-MM-DD.
 - Amounts are stored as integer cents (non-negative; 0 allowed).
 - Payer and payee must never be equal, and cannot both be NULL.
-- If only one of date_payment or date_application is provided, the other is copied from it.
+- These payer/payee invariants are enforced at the database layer (CHECK constraints).
+- If only one of date_payment or date_application is provided (UI/CSV), the other is copied
+  from it before insert.
 
 ## Finance DB (finance.db)
 
@@ -45,7 +50,7 @@ Core transaction records. Amount always flows from payer to payee.
   - Validation: trimmed, lowercase; required
 - subcategory
   - Type: TEXT NULL
-  - Meaning: optional subcategory under category
+  - Meaning: optional subcategory scoped to the category; the semantic key is (category, subcategory)
   - Validation: trimmed, lowercase; NULL allowed
 - payment_type
   - Type: TEXT NULL
@@ -54,7 +59,7 @@ Core transaction records. Amount always flows from payer to payee.
 - notes
   - Type: TEXT NULL
   - Meaning: user notes
-  - Validation: trimmed, lowercase; NULL allowed
+  - Validation: trimmed; NULL allowed; case preserved
 
 ### tags
 Normalized tag list.
@@ -98,13 +103,22 @@ Single-row table (id = 1).
 - theme
   - Type: TEXT NOT NULL
   - Meaning: UI theme, one of "light" or "dark"
+- csv_import_dir
+  - Type: TEXT NULL
+  - Meaning: configured CSV import directory path
+- csv_export_dir
+  - Type: TEXT NULL
+  - Meaning: configured CSV export directory path
+- db_backup_dir
+  - Type: TEXT NULL
+  - Meaning: configured database backup directory path
 
 ### recent_db_paths
 Tracks up to the three most recent DB paths.
 
 - path
   - Type: TEXT PRIMARY KEY
-  - Meaning: finance DB path
+  - Meaning: finance DB path (stored verbatim)
 - last_used_at
   - Type: INTEGER NOT NULL
   - Meaning: unix epoch seconds used for recency ordering
