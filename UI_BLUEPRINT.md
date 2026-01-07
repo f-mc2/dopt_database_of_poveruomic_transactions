@@ -10,7 +10,8 @@
   (transaction entry and tag assignment).
 - Missing payer/payee/payment_type are stored as NULL; NULL values are not selectable in filters.
 - Payer must always differ from payee; operations that would violate this are blocked with a warning.
-- Selected database path and UI theme persist across sessions.
+- Selected database path and UI theme persist across sessions via a small settings SQLite DB
+  stored in the data directory (gitignored); it remembers last-used DB and up to 3 recent DBs.
 
 ## Widget Patterns
 
@@ -41,9 +42,11 @@ Filter by tags from existing values only.
 Purpose: quick orientation and app status.
 - Database selection:
   - Default path from environment.
-  - Manual path input to override.
+  - Recent DB list (max 3) plus manual path input to override.
+  - Allow creating a new empty DB if the path does not exist (default under data dir).
   - Persist selection across sessions and load the chosen database on startup.
-- Theme selector (light/dark), persisted across sessions.
+  - Switching DBs resets session filters/state and shows a confirmation.
+- Theme selector (light/dark), persisted across sessions in the settings DB.
 - README-style tutorial section (headers, text, bullets) with a comparison logic explainer;
   optional images; final content defined later.
 - Show configured import/export/backup directories.
