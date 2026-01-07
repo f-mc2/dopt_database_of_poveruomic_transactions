@@ -38,6 +38,11 @@ Schema (logical):
   - subcategory TEXT NULL
   - payment_type TEXT NULL
   - notes TEXT NULL
+  - CHECK (amount_cents >= 0)
+  - CHECK (date_payment GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND
+      date(date_payment) = date_payment)
+  - CHECK (date_application GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND
+      date(date_application) = date_application)
   - CHECK (payer IS NOT NULL OR payee IS NOT NULL)
   - CHECK (payer IS NULL OR payee IS NULL OR payer <> payee)
 - `tags`:
@@ -53,6 +58,7 @@ Indexes (recommended):
 - `transactions(category)`, `transactions(subcategory)`
 - `transactions(payer)`, `transactions(payee)`, `transactions(payment_type)`
 - `transaction_tags(transaction_id)`, `transaction_tags(tag_id)`
+- `tags(name)` (UNIQUE implies index in SQLite)
 
 Subcategory is hierarchical at the application level: the semantic key is (category, subcategory).
 
@@ -60,9 +66,10 @@ Subcategory is hierarchical at the application level: the semantic key is (categ
 Stored at `/data/app_settings.db` (inside the data volume).
 
 Schema (logical):
-- `app_settings` (single row, id = 1):
+- `app_settings` (single row enforced by CHECK):
+  - id INTEGER PRIMARY KEY CHECK (id = 1)
   - last_used_db_path TEXT NULL
-  - theme TEXT NOT NULL ("light" or "dark")
+  - theme TEXT NOT NULL CHECK (theme IN ('light','dark'))
   - csv_import_dir TEXT NULL
   - csv_export_dir TEXT NULL
   - db_backup_dir TEXT NULL
@@ -79,11 +86,15 @@ Settings rules:
 - Finance-domain text fields are trimmed and lowercased:
   payer, payee, category, subcategory, payment_type, tag names.
 - Notes are trimmed but preserve case.
+- Tag names cannot contain commas (to keep CSV round-trip safe).
 - Empty strings become NULL for nullable fields.
-- Dates must be YYYY-MM-DD.
+- Dates must be YYYY-MM-DD; DB enforces format with CHECK using GLOB + date().
 - If only one of `date_payment` or `date_application` is provided (UI/CSV), copy it to the other
   before insert.
 - Payer/payee invariants (not both NULL, not equal) are validated in code and enforced in DB.
+- Manage Values delete preflight:
+  - Deleting payer X is blocked if any transaction with payer X has payee NULL.
+  - Deleting payee Y is blocked if any transaction with payee Y has payer NULL.
 - Amounts:
   - Dot decimal only; commas and thousands separators are invalid.
   - Allow digits with optional decimal part of 1-2 digits.
@@ -99,6 +110,7 @@ Settings rules:
   - at least one of `payer` / `payee`
 - Optional columns: `payer`, `payee`, `subcategory`, `payment_type`, `notes`, `tags`.
 - `tags` column is comma-separated; trim, lowercase, dedupe, drop empties.
+- Reject tag values that contain commas.
 - Validation occurs for all rows first; insert runs inside a single transaction.
 - If any row is invalid, the import aborts without partial inserts.
 
@@ -107,6 +119,7 @@ Settings rules:
 - Required date range filter based on selected date field.
 - Optional filters: payer, payee, category, subcategory, payment_type, tags.
 - If tags are selected, untagged transactions are excluded.
+- Multiple selected tags use ANY semantics (match any selected tag).
 - Export includes both date columns and a `tags` column (comma-separated).
 - Amounts are formatted with a dot decimal and two digits.
 
@@ -122,6 +135,7 @@ Settings rules:
 - Node selection:
   - AND mode: category/subcategory nodes + tag list with TagMatch ANY/ALL.
   - OR mode: nodes can be category, subcategory, tag, all_categories, all_tags.
+  - Selected nodes are evaluated independently; outputs are per node.
 
 ### Node Predicates
 - Category node: `tx.category == category`.
@@ -171,6 +185,7 @@ UI rendering:
 - Tag filters:
   - ANY uses `EXISTS` on `transaction_tags` with `IN` list.
   - ALL uses `GROUP BY transaction_id HAVING COUNT(DISTINCT tag_id) = ?`.
+- Transactions and export filters use ANY semantics.
 - Role mode inflow/outflow can be computed with conditional sums in one query or as two queries,
   but results must be consistent with the tx_count definition.
 
@@ -179,7 +194,9 @@ UI rendering:
 - Backup file name includes a timestamp and is stored in `db_backup_dir`.
 
 ## Tests (Synthetic Only)
-- Use `:memory:` or `./.tmp_test/` databases; never touch `./data/`.
+- Use file-backed DBs under `./.tmp_test/` for WAL and backup tests.
+- Use `:memory:` only for pure logic tests (no WAL/backup).
+- Never touch `./data/`.
 - Suggested tests:
   - Schema invariants: payer/payee CHECK constraints and tag cascade deletes.
   - Amount parsing: valid dot-decimal; reject commas and >2 decimals.
