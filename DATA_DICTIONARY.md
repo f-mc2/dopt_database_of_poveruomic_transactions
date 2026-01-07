@@ -11,6 +11,7 @@ It covers both the finance database and the app settings database.
 - Empty strings become NULL for nullable fields.
 - Dates use ISO format YYYY-MM-DD.
 - Amounts are stored as integer cents (non-negative; 0 allowed).
+- Amount inputs accept 0-2 fractional digits and are normalized to cents.
 - Payer and payee must never be equal, and cannot both be NULL.
 - These payer/payee invariants are enforced at the database layer (CHECK constraints).
 - If only one of date_payment or date_application is provided (UI/CSV), the other is copied
