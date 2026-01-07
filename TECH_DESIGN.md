@@ -97,7 +97,7 @@ Settings rules:
   - Deleting payee Y is blocked if any transaction with payee Y has payer NULL.
 - Amounts:
   - Dot decimal only; commas and thousands separators are invalid.
-  - Allow digits with optional decimal part of 1-2 digits.
+  - Allow digits with optional decimal part of 0-2 digits.
   - Convert with Decimal, quantize to 2 decimals, and multiply by 100 to `amount_cents`.
   - Reject inputs with more than two decimals.
 
