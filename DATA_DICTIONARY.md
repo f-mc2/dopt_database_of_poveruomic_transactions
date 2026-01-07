@@ -89,7 +89,8 @@ Many-to-many join between transactions and tags.
 - comparison selections (periods, groups, nodes) are UI-only
 
 ## App Settings DB (app_settings.db)
-Stored in the data directory to persist across sessions and containers.
+Stored in the data directory (default `/data/app_settings.db`) to persist across sessions
+and containers.
 
 ### app_settings
 Single-row table (id = 1).
