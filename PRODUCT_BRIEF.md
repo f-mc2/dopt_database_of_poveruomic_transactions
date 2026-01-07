@@ -44,7 +44,8 @@ safe database backups.
 ## Constraints (Non-negotiable)
 - Streamlit multipage app.
 - SQLite via sqlite3 module only.
-- No saved presets beyond database content.
+- No saved analytics presets or reports beyond database content; settings DB is allowed
+  for UI/config only.
 - SQL uses parameter placeholders only (?).
 - PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON.
 - amount_cents INTEGER NOT NULL; no float amounts stored.
