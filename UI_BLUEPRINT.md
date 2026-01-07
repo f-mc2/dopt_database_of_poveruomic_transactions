@@ -58,6 +58,7 @@ Purpose: view and maintain transactions.
 - Filters (P2/P3b): date range, payer, payee, category, subcategory, payment_type, tags.
 - Missing-value toggles: include missing payer, payee, or payment_type.
 - Subcategory choices are filtered by the selected category.
+- If any tags are selected, untagged transactions are excluded.
 - List view: table of transactions with pagination or "show N latest".
 - Add transaction (form):
   - Fields: date_payment, date_application, amount, payer, payee, category, subcategory,
@@ -75,14 +76,18 @@ Purpose: CSV import, export, and backup.
   - File uploader for semicolon-separated CSV.
   - Validate required columns (amount, category, at least one of date_payment/date_application,
     and at least one of payer/payee).
+  - Amount format uses a dot as decimal separator; commas and thousands separators are invalid.
+  - Tags column (if present) is comma-separated.
   - Abort on any invalid row; no partial inserts.
   - If only one date is provided in a row, copy it to the other before insert.
 - Export:
   - Date field selector: date_payment or date_application.
+  - Default date field is date_application.
   - Required date range selection.
   - Optional filters using P2/P3b.
   - Missing-value toggles: include missing payer, payee, or payment_type.
   - Download button; optional save to configured export directory.
+  - Export includes both date_payment and date_application columns and a tags column.
 - Backup:
   - Show configured backup directory.
   - Backup action with confirmation; writes a timestamped copy.
@@ -128,3 +133,5 @@ Purpose: comparison engine with periods, groups, and node selection.
   - "All categories" and "All tags" act as total nodes and can coexist with other selections.
 - Output:
   - Results table and grouped bar charts.
+  - Tables are per period and node: rows are groups; columns are #transactions, inflow, outflow,
+    and net in role mode, or #transactions and matched flow in matched-only mode.
