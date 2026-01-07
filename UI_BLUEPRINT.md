@@ -9,6 +9,7 @@
 - Finance-domain values are stored in lowercase; notes preserve case. Search is case-insensitive.
 - Use existing values whenever possible; creation is allowed only in explicit contexts
   (transaction entry, tag assignment, and Manage Values rename/merge).
+- Tag names cannot contain commas to ensure CSV round-tripping.
 - Missing payer/payee/payment_type are stored as NULL; NULL values are not selectable in filters.
 - Payer must always differ from payee; operations that would violate this are blocked with a warning.
 - Selected database path and UI theme persist across sessions via a small settings SQLite DB
@@ -59,6 +60,7 @@ Purpose: view and maintain transactions.
 - Missing-value toggles: include missing payer, payee, or payment_type.
 - Subcategory choices are filtered by the selected category.
 - If any tags are selected, untagged transactions are excluded.
+- Multiple selected tags use ANY semantics (match any selected tag).
 - List view: table of transactions with pagination or "show N latest".
 - Add transaction (form):
   - Fields: date_payment, date_application, amount, payer, payee, category, subcategory,
@@ -77,7 +79,7 @@ Purpose: CSV import, export, and backup.
   - Validate required columns (amount, category, at least one of date_payment/date_application,
     and at least one of payer/payee).
   - Amount format uses a dot as decimal separator; commas and thousands separators are invalid.
-  - Tags column (if present) is comma-separated.
+  - Tags column (if present) is comma-separated; tag names cannot contain commas.
   - Abort on any invalid row; no partial inserts.
   - If only one date is provided in a row, copy it to the other before insert.
 - Export:
@@ -86,6 +88,7 @@ Purpose: CSV import, export, and backup.
   - Required date range selection.
   - Optional filters using P2/P3b.
   - Missing-value toggles: include missing payer, payee, or payment_type.
+  - Multiple selected tags use ANY semantics (match any selected tag).
   - Download button; optional save to configured export directory.
   - Export includes both date_payment and date_application columns and a tags column.
 - Backup:
@@ -104,6 +107,8 @@ Purpose: bulk rename/merge and cleanup of reference values.
     - Category cannot be deleted (rename/merge only).
 - Subcategory operations are scoped to category (operate on category + subcategory pairs).
 - Any operation that would result in payer == payee is blocked with a warning.
+- Deleting payer or payee values is blocked if it would make any transaction have both NULL
+  (show count of blocking transactions).
 - Renames/merges require confirmation because they are destructive.
 
 ### Compare
@@ -122,15 +127,17 @@ Purpose: comparison engine with periods, groups, and node selection.
   - Role mode outputs inflow, outflow, and net (inflow - outflow).
   - Matched-only mode outputs a single matched flow (payer in A and payee in B).
 - Node selection (categories/subcategories and tags):
-  - Choose AND or OR composition.
-  - AND mode:
-    - Select up to 10 category/subcategory nodes (P2) with an "All categories" option.
-    - Select tags (P3b). Tag match uses ANY or ALL.
-  - OR mode:
-    - Select up to 10 nodes across category/subcategory/tags (P2) with "All categories" and
-      "All tags" options.
+  - Slice mode:
+    - Category slices + tag filter (AND mode):
+      - Select up to 10 category/subcategory nodes (P2) with an "All categories" option.
+      - Select tags (P3b). Tag match uses ANY or ALL.
+    - Mixed slices (OR mode):
+      - Select up to 10 nodes across category/subcategory/tags (P2) with "All categories" and
+        "All tags" options.
   - Subcategory nodes are category-scoped (category + subcategory pairs).
-  - "All categories" and "All tags" act as total nodes and can coexist with other selections.
+  - "All categories" and "All tags" are total slices (no category or tag filter).
+  - Selected nodes are evaluated independently; UI produces one output block per node.
+  - TagMatch ANY/ALL applies only in category slices + tag filter mode.
 - Output:
   - Results table and grouped bar charts.
   - Tables are per period and node: rows are groups; columns are #transactions, inflow, outflow,
