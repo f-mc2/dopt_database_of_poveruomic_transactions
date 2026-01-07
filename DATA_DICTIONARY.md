@@ -27,15 +27,15 @@ Core transaction records. Amount always flows from payer to payee.
 - date_payment
   - Type: TEXT NOT NULL
   - Meaning: date the payment was made
-  - Validation: YYYY-MM-DD; required
+  - Validation: YYYY-MM-DD; required; DB enforces ISO format and valid dates
 - date_application
   - Type: TEXT NOT NULL
   - Meaning: date the payment was applied/posted
-  - Validation: YYYY-MM-DD; required
+  - Validation: YYYY-MM-DD; required; DB enforces ISO format and valid dates
 - amount_cents
   - Type: INTEGER NOT NULL
   - Meaning: absolute amount in cents (no sign)
-  - Validation: integer >= 0
+  - Validation: integer >= 0 (DB CHECK constraint)
 - payer
   - Type: TEXT NULL
   - Meaning: party sending money
@@ -70,7 +70,7 @@ Normalized tag list.
 - name
   - Type: TEXT NOT NULL UNIQUE
   - Meaning: tag name
-  - Validation: trimmed, lowercase; unique
+  - Validation: trimmed, lowercase; unique; cannot contain commas
 
 ### transaction_tags
 Many-to-many join between transactions and tags.
@@ -98,12 +98,14 @@ Single-row table (id = 1).
 - id
   - Type: INTEGER PRIMARY KEY
   - Meaning: singleton row identifier (always 1)
+  - Validation: must be 1 (DB CHECK constraint)
 - last_used_db_path
   - Type: TEXT NULL
   - Meaning: last selected finance DB path
 - theme
   - Type: TEXT NOT NULL
   - Meaning: UI theme, one of "light" or "dark"
+  - Validation: must be "light" or "dark" (DB CHECK constraint)
 - csv_import_dir
   - Type: TEXT NULL
   - Meaning: configured CSV import directory path
