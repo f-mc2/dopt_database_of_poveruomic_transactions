@@ -4,10 +4,11 @@
 - Streamlit multipage navigation in the sidebar.
 - Desktop-first layout with mobile-safe stacking.
 - Destructive actions always require explicit confirmation.
-- No bulk edit/delete of transactions; only one-at-a-time edits.
-- Field values are stored in lowercase; search is case-insensitive.
+- No arbitrary bulk edit/delete of transactions; only one-at-a-time edits.
+  Controlled bulk operations are limited to Manage Values rename/merge/delete.
+- Finance-domain values are stored in lowercase; notes preserve case. Search is case-insensitive.
 - Use existing values whenever possible; creation is allowed only in explicit contexts
-  (transaction entry and tag assignment).
+  (transaction entry, tag assignment, and Manage Values rename/merge).
 - Missing payer/payee/payment_type are stored as NULL; NULL values are not selectable in filters.
 - Payer must always differ from payee; operations that would violate this are blocked with a warning.
 - Selected database path and UI theme persist across sessions via a small settings SQLite DB
@@ -18,7 +19,8 @@
 ### P1 Select-or-Create
 Single text input with suggestion list. User can pick an existing value or type a new one.
 - UI: text_input + filtered suggestions list.
-- Behavior: if user clicks a suggestion, the input is filled; otherwise, the input creates a new value.
+- Behavior: creation happens only on form submit; show a "will create new value" preview if the input
+  does not match an existing value.
 - Use for: transaction entry fields (payer, payee, category, subcategory, payment_type) and tag creation.
 
 ### P2 Select-Existing-Only
@@ -49,17 +51,21 @@ Purpose: quick orientation and app status.
 - Theme selector (light/dark), persisted across sessions in the settings DB.
 - README-style tutorial section (headers, text, bullets) with a comparison logic explainer;
   optional images; final content defined later.
-- Show configured import/export/backup directories.
+- Configuration section for import/export/backup directories (editable, persisted in settings DB).
 
 ### Transactions
 Purpose: view and maintain transactions.
 - Filters (P2/P3b): date range, payer, payee, category, subcategory, payment_type, tags.
+- Missing-value toggles: include missing payer, payee, or payment_type.
+- Subcategory choices are filtered by the selected category.
 - List view: table of transactions with pagination or "show N latest".
 - Add transaction (form):
   - Fields: date_payment, date_application, amount, payer, payee, category, subcategory,
     payment_type, notes, tags.
   - Use P1 for payer/payee/category/subcategory/payment_type.
   - Use P3a for tags.
+  - Subcategory suggestions are scoped to the selected category.
+  - If only one date is provided, auto-copy it into the other field before save.
 - Edit transaction (one at a time): same fields as add.
 - Delete transaction: confirmation required.
 
@@ -67,11 +73,15 @@ Purpose: view and maintain transactions.
 Purpose: CSV import, export, and backup.
 - Import:
   - File uploader for semicolon-separated CSV.
-  - Validate required columns (amount, date_payment, date_application, category, and one of payer/payee).
+  - Validate required columns (amount, category, at least one of date_payment/date_application,
+    and at least one of payer/payee).
   - Abort on any invalid row; no partial inserts.
+  - If only one date is provided in a row, copy it to the other before insert.
 - Export:
+  - Date field selector: date_payment or date_application.
   - Required date range selection.
   - Optional filters using P2/P3b.
+  - Missing-value toggles: include missing payer, payee, or payment_type.
   - Download button; optional save to configured export directory.
 - Backup:
   - Show configured backup directory.
@@ -87,7 +97,9 @@ Purpose: bulk rename/merge and cleanup of reference values.
     - Tags and subcategories can be removed.
     - Payer/payee/payment_type delete sets field to NULL.
     - Category cannot be deleted (rename/merge only).
+- Subcategory operations are scoped to category (operate on category + subcategory pairs).
 - Any operation that would result in payer == payee is blocked with a warning.
+- Renames/merges require confirmation because they are destructive.
 
 ### Compare
 Purpose: comparison engine with periods, groups, and node selection.
@@ -102,6 +114,8 @@ Purpose: comparison engine with periods, groups, and node selection.
     - Bi: selected payees (P2, multiselect).
 - Mode:
   - Role mode vs matched-only mode (UI label can use "perfect-match" for matched-only).
+  - Role mode outputs inflow, outflow, and net (inflow - outflow).
+  - Matched-only mode outputs a single matched flow (payer in A and payee in B).
 - Node selection (categories/subcategories and tags):
   - Choose AND or OR composition.
   - AND mode:
@@ -110,5 +124,7 @@ Purpose: comparison engine with periods, groups, and node selection.
   - OR mode:
     - Select up to 10 nodes across category/subcategory/tags (P2) with "All categories" and
       "All tags" options.
+  - Subcategory nodes are category-scoped (category + subcategory pairs).
+  - "All categories" and "All tags" act as total nodes and can coexist with other selections.
 - Output:
   - Results table and grouped bar charts.
