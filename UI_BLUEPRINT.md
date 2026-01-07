@@ -10,6 +10,7 @@
   (transaction entry and tag assignment).
 - Missing payer/payee/payment_type are stored as NULL; NULL values are not selectable in filters.
 - Payer must always differ from payee; operations that would violate this are blocked with a warning.
+- Selected database path and UI theme persist across sessions.
 
 ## Widget Patterns
 
@@ -38,8 +39,14 @@ Filter by tags from existing values only.
 
 ### Home
 Purpose: quick orientation and app status.
-- Show current database path and configured import/export/backup directories.
-- Short navigation links to primary pages.
+- Database selection:
+  - Default path from environment.
+  - Manual path input to override.
+  - Persist selection across sessions and load the chosen database on startup.
+- Theme selector (light/dark), persisted across sessions.
+- README-style tutorial section (headers, text, bullets) with a comparison logic explainer;
+  optional images; final content defined later.
+- Show configured import/export/backup directories.
 
 ### Transactions
 Purpose: view and maintain transactions.
@@ -54,7 +61,7 @@ Purpose: view and maintain transactions.
 - Delete transaction: confirmation required.
 
 ### Import/Export
-Purpose: CSV import and export.
+Purpose: CSV import, export, and backup.
 - Import:
   - File uploader for semicolon-separated CSV.
   - Validate required columns (amount, date_payment, date_application, category, and one of payer/payee).
@@ -63,6 +70,9 @@ Purpose: CSV import and export.
   - Required date range selection.
   - Optional filters using P2/P3b.
   - Download button; optional save to configured export directory.
+- Backup:
+  - Show configured backup directory.
+  - Backup action with confirmation; writes a timestamped copy.
 
 ### Manage Values
 Purpose: bulk rename/merge and cleanup of reference values.
@@ -99,8 +109,3 @@ Purpose: comparison engine with periods, groups, and node selection.
       "All tags" options.
 - Output:
   - Results table and grouped bar charts.
-
-### Backup
-Purpose: create a database backup on demand.
-- Show configured backup directory.
-- Backup action with confirmation; writes a timestamped copy.
