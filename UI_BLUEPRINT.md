@@ -79,7 +79,8 @@ Purpose: CSV import, export, and backup.
   - Validate required columns (amount, category, at least one of date_payment/date_application,
     and at least one of payer/payee).
   - Amount format uses a dot as decimal separator; commas and thousands separators are invalid.
-  - Tags column (if present) is comma-separated; tag names cannot contain commas.
+  - Tags column (if present) is comma-separated; no escaping is supported; tag names cannot
+    contain commas.
   - Abort on any invalid row; no partial inserts.
   - If only one date is provided in a row, copy it to the other before insert.
 - Export:
@@ -109,6 +110,7 @@ Purpose: bulk rename/merge and cleanup of reference values.
 - Any operation that would result in payer == payee is blocked with a warning.
 - Deleting payer or payee values is blocked if it would make any transaction have both NULL
   (show count of blocking transactions).
+- Renames/merges are blocked if they would make payer == payee (show count of conflicts).
 - Renames/merges require confirmation because they are destructive.
 
 ### Compare
@@ -140,5 +142,5 @@ Purpose: comparison engine with periods, groups, and node selection.
   - TagMatch ANY/ALL applies only in category slices + tag filter mode.
 - Output:
   - Results table and grouped bar charts.
-  - Tables are per period and node: rows are groups; columns are #transactions, inflow, outflow,
-    and net in role mode, or #transactions and matched flow in matched-only mode.
+  - Tables are per period and node: rows are groups; columns are #tx (inflow ∪ outflow), inflow,
+    outflow, and net in role mode, or #transactions and matched flow in matched-only mode.
