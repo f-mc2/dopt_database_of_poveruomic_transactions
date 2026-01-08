@@ -56,6 +56,10 @@ The app runs on a desktop host and is usable on mobile browsers.
 - T9: Add/edit forms support all fields and tag assignment.
 - T10: If only one date is provided, auto-copy to the other before save.
 - T11: Delete requires confirmation.
+- T12: A free-text search input appears above the table; it filters by matching payer, payee,
+  category, subcategory, tags, or notes (combined with other filters).
+- T13: Filter controls (date range, payer, payee, category, subcategory, payment_type, tags,
+  missing-value toggles) render below the table.
 
 ### Import/Export/Backup
 - IE1: Import semicolon-separated CSV with strict validation and atomic insert.
