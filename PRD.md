@@ -101,12 +101,13 @@ The app runs on a desktop host and is usable on mobile browsers.
 ## Data Model and Validation
 Authoritative definitions are in `DATA_DICTIONARY.md`. Key rules:
 - amount stored as `amount_cents INTEGER NOT NULL`, non-negative.
-- Finance-domain fields are normalized to lowercase; DB enforces lower(trim()) for these fields.
+- Finance-domain fields must already be normalized (lower(trim())); DB rejects non-normalized values
+  via CHECK constraints.
 - Notes preserve case; empty/whitespace-only values are invalid if not NULL.
 - Tag names are normalized, non-empty, and cannot contain commas (DB CHECK).
 - Payer/payee cannot both be NULL and cannot be equal (DB CHECK).
-- Dates must be ISO shape; DB enforces shape/SQLite parseability; app validates with
-  `datetime.date.fromisoformat()` for user-friendly errors.
+- Dates must be ISO shape; DB rejects dates not parseable by SQLite `date()`, and the app validates
+  with `datetime.date.fromisoformat()` for user-friendly errors.
 - All SQL uses parameter placeholders (`?`).
 - All write paths normalize input and convert empty/whitespace-only values to NULL before insert/update.
 
