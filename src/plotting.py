@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import altair as alt
 import pandas as pd
@@ -12,12 +12,14 @@ def grouped_bar_chart(
     group_label: str,
     value_field: str,
     period_order: List[str],
+    value_title: Optional[str] = None,
 ) -> alt.Chart:
     subset = df[df["group_label"] == group_label]
     if subset.empty:
         return alt.Chart(pd.DataFrame({"node_label": [], value_field: []})).mark_bar()
 
     color_scale = alt.Scale(domain=period_order, range=DEFAULT_COLORS[: len(period_order)])
+    value_title = value_title or value_field
 
     chart = (
         alt.Chart(subset)
@@ -25,12 +27,12 @@ def grouped_bar_chart(
         .encode(
             x=alt.X("node_label:N", sort=None, title=""),
             xOffset=alt.XOffset("period_label:N", sort=period_order),
-            y=alt.Y(f"{value_field}:Q", title=value_field),
+            y=alt.Y(f"{value_field}:Q", title=value_title, axis=alt.Axis(format=",.2f")),
             color=alt.Color("period_label:N", scale=color_scale),
             tooltip=[
                 alt.Tooltip("period_label:N"),
                 alt.Tooltip("node_label:N"),
-                alt.Tooltip(f"{value_field}:Q"),
+                alt.Tooltip(f"{value_field}:Q", title=value_title, format=",.2f"),
                 alt.Tooltip("tx_count:Q"),
             ],
         )

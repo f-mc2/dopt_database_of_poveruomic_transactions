@@ -6,3 +6,4 @@ data/
 __pycache__/
 .dopt_state.json
 .venv/
+.pytest_cache/

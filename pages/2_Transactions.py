@@ -15,6 +15,9 @@ if not st.session_state.get("db_ready"):
     st.warning("Open or create a database from the Home page first.")
     st.stop()
 
+DATE_INPUT_MIN = dt.date(1900, 1, 1)
+DATE_INPUT_MAX = dt.date(2100, 12, 31)
+
 
 def _normalize_optional(value: Optional[str], lower: bool = True) -> Optional[str]:
     if value is None:
@@ -47,15 +50,29 @@ try:
     date_field = "date_application"
     min_date, max_date = queries.get_date_bounds(conn, date_field)
     today = dt.date.today()
-    default_start = dt.date.fromisoformat(min_date) if min_date else today
-    default_end = dt.date.fromisoformat(max_date) if max_date else today
+    date_min_limit = dt.date.fromisoformat(min_date) if min_date else None
+    date_max_limit = dt.date.fromisoformat(max_date) if max_date else None
+    default_start = date_min_limit or today
+    default_end = date_max_limit or today
 
     with st.form("tx_filters"):
         date_col1, date_col2 = st.columns(2)
         with date_col1:
-            start_date = st.date_input("Start date", value=default_start, key="tx_filter_start")
+            start_date = st.date_input(
+                "Start date",
+                value=default_start,
+                min_value=date_min_limit,
+                max_value=date_max_limit,
+                key="tx_filter_start",
+            )
         with date_col2:
-            end_date = st.date_input("End date", value=default_end, key="tx_filter_end")
+            end_date = st.date_input(
+                "End date",
+                value=default_end,
+                min_value=date_min_limit,
+                max_value=date_max_limit,
+                key="tx_filter_end",
+            )
 
         payer_filter = ui_widgets.multiselect_existing(
             "Payers", payer_options, key="tx_filter_payers"
@@ -169,12 +186,18 @@ try:
         if ordered_columns:
             df = df[ordered_columns]
         st.caption("Default order is date_application desc; click column headers to sort.")
-        st.dataframe(df, use_container_width=True, height=520)
+        st.dataframe(df, width="stretch", height=520)
 
     st.divider()
     st.subheader("Add transaction")
     with st.form("add_transaction"):
-        date_payment = st.date_input("Payment date", value=today, key="add_date_payment")
+        date_payment = st.date_input(
+            "Payment date",
+            value=today,
+            min_value=DATE_INPUT_MIN,
+            max_value=DATE_INPUT_MAX,
+            key="add_date_payment",
+        )
         copy_dates = st.checkbox(
             "Use payment date for application date",
             value=True,
@@ -184,6 +207,8 @@ try:
             st.date_input(
                 "Application date",
                 value=date_payment,
+                min_value=DATE_INPUT_MIN,
+                max_value=DATE_INPUT_MAX,
                 key="add_date_application",
                 disabled=True,
             )
@@ -192,6 +217,8 @@ try:
             date_application = st.date_input(
                 "Application date",
                 value=today,
+                min_value=DATE_INPUT_MIN,
+                max_value=DATE_INPUT_MAX,
                 key="add_date_application",
             )
         form_amount = st.text_input("Amount", value="0.00", key="add_amount")
@@ -313,6 +340,8 @@ try:
                 edit_date_payment = st.date_input(
                     "Payment date",
                     value=dt.date.fromisoformat(selected_row["date_payment"]),
+                    min_value=DATE_INPUT_MIN,
+                    max_value=DATE_INPUT_MAX,
                     key=f"edit_date_payment_{selected_id}",
                 )
                 copy_edit_dates = st.checkbox(
@@ -324,6 +353,8 @@ try:
                     st.date_input(
                         "Application date",
                         value=edit_date_payment,
+                        min_value=DATE_INPUT_MIN,
+                        max_value=DATE_INPUT_MAX,
                         key=f"edit_date_application_{selected_id}",
                         disabled=True,
                     )
@@ -332,6 +363,8 @@ try:
                     edit_date_application = st.date_input(
                         "Application date",
                         value=dt.date.fromisoformat(selected_row["date_application"]),
+                        min_value=DATE_INPUT_MIN,
+                        max_value=DATE_INPUT_MAX,
                         key=f"edit_date_application_{selected_id}",
                     )
                 edit_amount = st.text_input(

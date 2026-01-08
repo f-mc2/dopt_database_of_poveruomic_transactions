@@ -49,6 +49,46 @@ def _build_or_nodes(
     return nodes
 
 
+def _comparison_signature(
+    periods: List[Period],
+    groups: List[Group],
+    mode: str,
+    node_mode: str,
+    date_field: str,
+    and_entries: List[Node],
+    or_entries: List[Node],
+    and_tags: List[str],
+    tag_match: str,
+) -> Dict[str, object]:
+    return {
+        "periods": [(period.label, period.start_date, period.end_date) for period in periods],
+        "groups": [
+            (
+                group.label,
+                tuple(sorted(group.payers)),
+                tuple(sorted(group.payees)),
+            )
+            for group in groups
+        ],
+        "mode": mode,
+        "node_mode": node_mode,
+        "date_field": date_field,
+        "and_nodes": [node.label for node in and_entries],
+        "or_nodes": [node.label for node in or_entries],
+        "and_tags": list(and_tags),
+        "tag_match": tag_match,
+    }
+
+
+def _metric_label(metric: str) -> str:
+    return {
+        "net_cents": "net",
+        "inflow_cents": "inflow",
+        "outflow_cents": "outflow",
+        "matched_flow_cents": "matched flow",
+    }.get(metric, metric)
+
+
 conn: Optional[sqlite3.Connection] = None
 try:
     conn = db.connect(st.session_state.db_path)
@@ -72,12 +112,16 @@ try:
     date_field = date_field_labels[selected_label]
 
     min_date, max_date = queries.get_date_bounds(conn, date_field)
+    date_min_limit: Optional[dt.date] = None
+    date_max_limit: Optional[dt.date] = None
     if min_date is None or max_date is None:
         min_date_value = dt.date.today()
         max_date_value = dt.date.today()
     else:
         min_date_value = dt.date.fromisoformat(min_date)
         max_date_value = dt.date.fromisoformat(max_date)
+        date_min_limit = min_date_value
+        date_max_limit = max_date_value
 
     st.subheader("Periods")
     period_count = st.number_input(
@@ -111,11 +155,15 @@ try:
                 start_date = st.date_input(
                     "Start date",
                     value=min_date_value,
+                    min_value=date_min_limit,
+                    max_value=date_max_limit,
                     key=f"period_start_{idx}",
                 )
                 end_date = st.date_input(
                     "End date",
                     value=max_date_value,
+                    min_value=date_min_limit,
+                    max_value=date_max_limit,
                     key=f"period_end_{idx}",
                 )
             if start_date > end_date:
@@ -215,6 +263,18 @@ try:
             st.error("Select at most 10 nodes.")
         or_entries = [node_map[label] for label in selected_labels]
 
+    current_signature = _comparison_signature(
+        periods=periods,
+        groups=groups,
+        mode=mode,
+        node_mode=node_mode,
+        date_field=date_field,
+        and_entries=and_entries,
+        or_entries=or_entries,
+        and_tags=and_tags,
+        tag_match=tag_match,
+    )
+
     if st.button("Run comparison"):
         errors: List[str] = []
         if period_errors:
@@ -245,71 +305,92 @@ try:
                 and_tags=and_tags,
                 tag_match=tag_match,
             )
-
-            if df.empty:
-                st.info("No comparison data generated.")
-            else:
-                st.subheader("Results")
-                period_order = [period.label for period in periods]
-                node_order = (
+            st.session_state["compare_results"] = {
+                "df": df,
+                "mode": mode,
+                "period_order": [period.label for period in periods],
+                "node_order": (
                     [node.label for node in and_entries]
                     if node_mode == "and"
                     else [node.label for node in or_entries]
+                ),
+                "group_labels": [group.label for group in groups],
+                "signature": current_signature,
+            }
+
+    results = st.session_state.get("compare_results")
+    if results is not None:
+        if results["signature"] != current_signature:
+            st.info("Selections changed since last run. Click Run comparison to refresh.")
+
+        df = results["df"]
+        if df.empty:
+            st.info("No comparison data generated.")
+        else:
+            st.subheader("Results")
+            period_order = results["period_order"]
+            node_order = results["node_order"]
+            stored_mode = results["mode"]
+
+            for period_label in period_order:
+                st.markdown(f"### {period_label}")
+                period_df = df[df["period_label"] == period_label]
+                for node_label in node_order:
+                    node_df = period_df[period_df["node_label"] == node_label]
+                    if node_df.empty:
+                        continue
+                    st.markdown(f"#### {node_label}")
+                    table = node_df.set_index("group_label")
+                    if stored_mode == "matched_only":
+                        display = pd.DataFrame(
+                            {
+                                "#transactions": table["tx_count"].astype(int),
+                                "matched flow": table["matched_flow_cents"].apply(
+                                    lambda v: amounts.format_cents(int(v))
+                                ),
+                            }
+                        )
+                    else:
+                        display = pd.DataFrame(
+                            {
+                                "#tx (inflow ∪ outflow)": table["tx_count"].astype(int),
+                                "inflow": table["inflow_cents"].apply(
+                                    lambda v: amounts.format_cents(int(v))
+                                ),
+                                "outflow": table["outflow_cents"].apply(
+                                    lambda v: amounts.format_cents(int(v))
+                                ),
+                                "net": table["net_cents"].apply(
+                                    lambda v: amounts.format_cents(int(v))
+                                ),
+                            }
+                        )
+                    st.dataframe(display, width="stretch")
+
+            st.divider()
+            if stored_mode == "matched_only":
+                metric = "matched_flow_cents"
+            else:
+                metric = st.selectbox(
+                    "Metric",
+                    ["net_cents", "inflow_cents", "outflow_cents"],
+                    key="compare_metric",
                 )
 
-                for period_label in period_order:
-                    st.markdown(f"### {period_label}")
-                    period_df = df[df["period_label"] == period_label]
-                    for node_label in node_order:
-                        node_df = period_df[period_df["node_label"] == node_label]
-                        if node_df.empty:
-                            continue
-                        st.markdown(f"#### {node_label}")
-                        table = node_df.set_index("group_label")
-                        if mode == "matched_only":
-                            display = pd.DataFrame(
-                                {
-                                    "#transactions": table["tx_count"].astype(int),
-                                    "matched flow": table["matched_flow_cents"].apply(
-                                        lambda v: amounts.format_cents(int(v))
-                                    ),
-                                }
-                            )
-                        else:
-                            display = pd.DataFrame(
-                                {
-                                    "#tx (inflow ∪ outflow)": table["tx_count"].astype(int),
-                                    "inflow": table["inflow_cents"].apply(
-                                        lambda v: amounts.format_cents(int(v))
-                                    ),
-                                    "outflow": table["outflow_cents"].apply(
-                                        lambda v: amounts.format_cents(int(v))
-                                    ),
-                                    "net": table["net_cents"].apply(
-                                        lambda v: amounts.format_cents(int(v))
-                                    ),
-                                }
-                            )
-                        st.dataframe(display, use_container_width=True)
+            metric_label = _metric_label(metric)
+            chart_df = df.copy()
+            chart_df["metric_value"] = chart_df[metric].astype(float) / 100.0
 
-                st.divider()
-                if mode == "matched_only":
-                    metric = "matched_flow_cents"
-                else:
-                    metric = st.selectbox(
-                        "Metric",
-                        ["net_cents", "inflow_cents", "outflow_cents"],
-                        key="compare_metric",
-                    )
-                for group in groups:
-                    st.markdown(f"### {group.label}")
-                    chart = plotting.grouped_bar_chart(
-                        df,
-                        group_label=group.label,
-                        value_field=metric,
-                        period_order=period_order,
-                    )
-                    st.altair_chart(chart, use_container_width=True)
+            for group_label in results["group_labels"]:
+                st.markdown(f"### {group_label}")
+                chart = plotting.grouped_bar_chart(
+                    chart_df,
+                    group_label=group_label,
+                    value_field="metric_value",
+                    period_order=period_order,
+                    value_title=metric_label,
+                )
+                st.altair_chart(chart, width="stretch")
 
 finally:
     if conn is not None:

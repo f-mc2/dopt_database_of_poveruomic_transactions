@@ -56,14 +56,14 @@ try:
                 st.write(f"Detected columns: {', '.join(headers)}")
                 preview = csv_io.preview_rows(raw_rows)
                 if preview:
-                    st.dataframe(preview, use_container_width=True)
+            st.dataframe(preview, width="stretch")
 
                 parsed_rows, errors = csv_io.validate_rows(raw_rows)
                 if errors:
                     st.error("Validation errors detected. Fix the CSV and try again.")
                     st.dataframe(
                         [{"row": err.row, "error": err.message} for err in errors],
-                        use_container_width=True,
+                        width="stretch",
                     )
                 elif not parsed_rows:
                     st.warning("No rows to import.")
@@ -99,16 +99,28 @@ try:
         if min_date is None or max_date is None:
             st.warning("No transactions available to export.")
         else:
-            start_default = dt.date.fromisoformat(min_date)
-            end_default = dt.date.fromisoformat(max_date)
+            date_min_limit = dt.date.fromisoformat(min_date)
+            date_max_limit = dt.date.fromisoformat(max_date)
+            start_default = date_min_limit
+            end_default = date_max_limit
 
             date_col1, date_col2 = st.columns(2)
             with date_col1:
                 start_date = st.date_input(
-                    "Start date", value=start_default, key="export_start_date"
+                    "Start date",
+                    value=start_default,
+                    min_value=date_min_limit,
+                    max_value=date_max_limit,
+                    key="export_start_date",
                 )
             with date_col2:
-                end_date = st.date_input("End date", value=end_default, key="export_end_date")
+                end_date = st.date_input(
+                    "End date",
+                    value=end_default,
+                    min_value=date_min_limit,
+                    max_value=date_max_limit,
+                    key="export_end_date",
+                )
 
             payer_options = queries.get_distinct_values(conn, "payer")
             payee_options = queries.get_distinct_values(conn, "payee")
