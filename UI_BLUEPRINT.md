@@ -64,8 +64,8 @@ Purpose: view and maintain transactions.
 - If any tags are selected, untagged transactions are excluded.
 - Multiple selected tags use ANY semantics (match any selected tag).
 - List view: scrollable table with all fields as columns; tags shown as a comma-separated,
-  lexicographically sorted list; allow column hide/show and ordering by a selected column
-  (ascending/descending). Default order is date_application desc, id desc.
+  lexicographically sorted list; allow column hide/show; default order is date_application
+  desc, id desc; user can sort by clicking column headers in the table.
 - Add transaction (form):
   - Fields: date_payment, date_application, amount, payer, payee, category, subcategory,
     payment_type, notes, tags.

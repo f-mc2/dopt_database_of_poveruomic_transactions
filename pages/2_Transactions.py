@@ -116,44 +116,9 @@ try:
             "include_missing_payment_type": include_missing_payment_type,
         }
 
-        sort_options = {
-            "Date (application)": "date_application",
-            "Date (payment)": "date_payment",
-            "Amount": "amount_cents",
-            "Payer": "payer",
-            "Payee": "payee",
-            "Payment type": "payment_type",
-            "Category": "category",
-            "Subcategory": "subcategory",
-            "Tags": "tags",
-            "Notes": "notes",
-        }
-        sort_label = st.selectbox(
-            "Sort by",
-            list(sort_options.keys()),
-            index=0,
-            key="tx_sort_by",
-        )
-        sort_dir = st.radio(
-            "Sort direction",
-            ["desc", "asc"],
-            index=0,
-            horizontal=True,
-            key="tx_sort_dir",
-        )
-        limit = st.selectbox(
-            "Show N latest",
-            [50, 100, 200, 500],
-            index=2,
-            key="tx_limit",
-        )
-
         transactions = queries.list_transactions(
             conn,
             filters,
-            sort_by=sort_options[sort_label],
-            sort_dir=sort_dir,
-            limit=limit,
         )
 
     st.subheader("Results")
@@ -201,7 +166,8 @@ try:
         df = pd.DataFrame(display_rows)
         if ordered_columns:
             df = df[ordered_columns]
-        st.dataframe(df, use_container_width=True, height=420)
+        st.caption("Default order is date_application desc; click column headers to sort.")
+        st.dataframe(df, use_container_width=True, height=520)
 
     st.divider()
     st.subheader("Add transaction")

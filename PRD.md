@@ -51,8 +51,8 @@ The app runs on a desktop host and is usable on mobile browsers.
 - T6: List view is a scrollable table with all fields as columns; tags shown as a comma-separated,
   lexicographically sorted list.
 - T7: User can hide/show columns.
-- T8: Ordering by a selected column (asc/desc) applies to the full filtered result; default order
-  is date_application desc, id desc.
+- T8: Default order is date_application desc, id desc; user can sort by clicking column headers
+  in the table (no separate sort control in MVP).
 - T9: Add/edit forms support all fields and tag assignment.
 - T10: If only one date is provided, auto-copy to the other before save.
 - T11: Delete requires confirmation.
@@ -138,7 +138,7 @@ For each period P, group G=(A,B), node N:
 - Dates accept one provided date and copy to the other; invalid calendar dates are rejected in app.
 - Tag names cannot contain commas (UI + DB enforced).
 - Payer/payee invariants are enforced by DB and preflight UI.
-- Transactions list supports column hide/show and sort; date filter uses `date_application`.
+- Transactions list supports column hide/show and table sorting; date filter uses `date_application`.
 - Comparison outputs match role vs matched-only semantics and node slicing.
 - Backup uses SQLite online backup API to create consistent snapshots.
 

@@ -28,27 +28,26 @@ def select_or_create(
     if not suggestions:
         suggestions = [_NO_MATCHES]
 
-    def _apply_suggestion() -> None:
-        selection = st.session_state.get(f"{key}_suggest")
-        if selection and selection != _NO_MATCHES:
-            st.session_state[input_key] = selection
-
-    st.selectbox(
+    selection = st.selectbox(
         f"{label} suggestions",
         suggestions,
         key=f"{key}_suggest",
-        on_change=_apply_suggestion,
     )
 
     is_new = False
+    chosen_value: Optional[str] = None
     if normalized:
+        chosen_value = normalized
         is_new = normalized not in normalized_options
         if is_new:
             st.caption(f"Will create new value: {normalized}")
+    elif selection != _NO_MATCHES:
+        chosen_value = selection
+        st.caption(f"Using suggestion: {selection}")
 
-    if not normalized:
+    if not chosen_value:
         return (None if allow_empty else None), False
-    return normalized, is_new
+    return chosen_value, is_new
 
 
 def select_existing(

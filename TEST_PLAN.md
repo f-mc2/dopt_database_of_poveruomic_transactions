@@ -21,7 +21,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
 - Add a transaction with only one date; confirm the other date auto-copies.
 - Add tags and confirm they display as a sorted, comma-separated list in the table.
 - Verify date range filter uses `date_application`.
-- Toggle column visibility and sort order; confirm sorting applies to the full filtered set.
+- Toggle column visibility and sort via column headers; confirm sorting updates the view.
 - Delete a transaction with confirmation.
 
 ### Import / Export / Backup
