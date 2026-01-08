@@ -12,6 +12,7 @@ It covers both the finance database and the app settings database.
 - Dates use ISO format YYYY-MM-DD.
 - Amounts are stored as integer cents (non-negative; 0 allowed).
 - Amount inputs accept 0-2 fractional digits and are normalized to cents.
+- Amount inputs must be non-negative (no leading + or -).
 - Payer and payee must never be equal, and cannot both be NULL.
 - These payer/payee invariants are enforced at the database layer (CHECK constraints).
 - If only one of date_payment or date_application is provided (UI/CSV), the other is copied
@@ -28,11 +29,11 @@ Core transaction records. Amount always flows from payer to payee.
 - date_payment
   - Type: TEXT NOT NULL
   - Meaning: date the payment was made
-  - Validation: YYYY-MM-DD; required; DB enforces ISO format and valid dates
+  - Validation: YYYY-MM-DD; required; DB enforces ISO format and valid dates via CHECK
 - date_application
   - Type: TEXT NOT NULL
   - Meaning: date the payment was applied/posted
-  - Validation: YYYY-MM-DD; required; DB enforces ISO format and valid dates
+  - Validation: YYYY-MM-DD; required; DB enforces ISO format and valid dates via CHECK
 - amount_cents
   - Type: INTEGER NOT NULL
   - Meaning: absolute amount in cents (no sign)
@@ -71,7 +72,7 @@ Normalized tag list.
 - name
   - Type: TEXT NOT NULL UNIQUE
   - Meaning: tag name
-  - Validation: trimmed, lowercase; unique; cannot contain commas
+  - Validation: trimmed, lowercase; unique; cannot contain commas (DB CHECK constraint)
 
 ### transaction_tags
 Many-to-many join between transactions and tags.
