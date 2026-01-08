@@ -56,7 +56,7 @@ try:
                 st.write(f"Detected columns: {', '.join(headers)}")
                 preview = csv_io.preview_rows(raw_rows)
                 if preview:
-            st.dataframe(preview, width="stretch")
+                    st.dataframe(preview, width="stretch")
 
                 parsed_rows, errors = csv_io.validate_rows(raw_rows)
                 if errors:
