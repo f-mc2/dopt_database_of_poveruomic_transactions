@@ -1,10 +1,11 @@
 import datetime as dt
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
+import pandas as pd
 import sqlite3
 import streamlit as st
 
-from src import comparison_engine, db, plotting, queries, tags
+from src import amounts, comparison_engine, db, plotting, queries, tags, ui_widgets
 from src.types import Group, Node, Period
 
 st.title("Compare")
@@ -19,44 +20,30 @@ def _default_label(prefix: str, index: int, value: str) -> str:
     return cleaned or f"{prefix} {index}"
 
 
-def _build_or_nodes(
-    categories: List[str],
-    sub_pairs: List[tuple],
-    tags_list: List[str],
-) -> List[Node]:
-    nodes: List[Node] = []
-    nodes.append(Node(label="All categories", kind="all"))
+def _build_category_nodes(categories: List[str], sub_pairs: List[Tuple[str, str]]) -> Dict[str, Node]:
+    nodes: Dict[str, Node] = {"All categories": Node(label="All categories", kind="all_categories")}
     for category in categories:
-        nodes.append(Node(label=category, kind="category", category=category))
+        nodes[category] = Node(label=category, kind="category", category=category)
     for category, subcategory in sub_pairs:
-        label = f"{category}:{subcategory}"
-        nodes.append(
-            Node(
-                label=label,
-                kind="subcategory",
-                category=category,
-                subcategory=subcategory,
-            )
+        label = f"{category} / {subcategory}"
+        nodes[label] = Node(
+            label=label,
+            kind="subcategory",
+            category=category,
+            subcategory=subcategory,
         )
-    for tag in tags_list:
-        nodes.append(Node(label=tag, kind="tag", tag=tag))
     return nodes
 
 
-def _build_entry_nodes(categories: List[str], sub_pairs: List[tuple]) -> List[Node]:
-    nodes: List[Node] = []
-    for category in categories:
-        nodes.append(Node(label=category, kind="category", category=category))
-    for category, subcategory in sub_pairs:
-        label = f"{category}:{subcategory}"
-        nodes.append(
-            Node(
-                label=label,
-                kind="subcategory",
-                category=category,
-                subcategory=subcategory,
-            )
-        )
+def _build_or_nodes(
+    categories: List[str],
+    sub_pairs: List[Tuple[str, str]],
+    tag_list: List[str],
+) -> Dict[str, Node]:
+    nodes = _build_category_nodes(categories, sub_pairs)
+    nodes["All tags"] = Node(label="All tags", kind="all_tags")
+    for tag in tag_list:
+        nodes[tag] = Node(label=tag, kind="tag", tag=tag)
     return nodes
 
 
@@ -71,12 +58,13 @@ try:
     tag_options = tags.list_tags(conn)
 
     date_field_labels = {
-        "Payment date": "date_payment",
         "Application date": "date_application",
+        "Payment date": "date_payment",
     }
     selected_label = st.selectbox(
-        "Period date field",
+        "Date field",
         list(date_field_labels.keys()),
+        index=0,
         key="compare_date_field",
     )
     date_field = date_field_labels[selected_label]
@@ -89,7 +77,7 @@ try:
         min_date_value = dt.date.fromisoformat(min_date)
         max_date_value = dt.date.fromisoformat(max_date)
 
-    st.subheader("Setup")
+    st.subheader("Periods")
     period_count = st.number_input(
         "Number of periods",
         min_value=1,
@@ -97,14 +85,6 @@ try:
         value=1,
         step=1,
         key="compare_period_count",
-    )
-    group_count = st.number_input(
-        "Number of groups",
-        min_value=1,
-        max_value=5,
-        value=1,
-        step=1,
-        key="compare_group_count",
     )
 
     periods: List[Period] = []
@@ -116,16 +96,26 @@ try:
                 value=f"Period {idx + 1}",
                 key=f"period_label_{idx}",
             )
-            start_date = st.date_input(
-                "Start date",
-                value=min_date_value,
-                key=f"period_start_{idx}",
+            full_range = st.checkbox(
+                "Use full range",
+                value=True,
+                key=f"period_full_{idx}",
             )
-            end_date = st.date_input(
-                "End date",
-                value=max_date_value,
-                key=f"period_end_{idx}",
-            )
+            if full_range:
+                start_date = min_date_value
+                end_date = max_date_value
+                st.caption(f"{start_date.isoformat()} to {end_date.isoformat()}")
+            else:
+                start_date = st.date_input(
+                    "Start date",
+                    value=min_date_value,
+                    key=f"period_start_{idx}",
+                )
+                end_date = st.date_input(
+                    "End date",
+                    value=max_date_value,
+                    key=f"period_end_{idx}",
+                )
             if start_date > end_date:
                 period_errors.append(f"Period {idx + 1} has start date after end date.")
             periods.append(
@@ -136,6 +126,16 @@ try:
                 )
             )
 
+    st.subheader("Groups")
+    group_count = st.number_input(
+        "Number of groups",
+        min_value=1,
+        max_value=5,
+        value=1,
+        step=1,
+        key="compare_group_count",
+    )
+
     groups: List[Group] = []
     for idx in range(int(group_count)):
         with st.expander(f"Group {idx + 1}", expanded=True):
@@ -144,16 +144,14 @@ try:
                 value=f"Group {idx + 1}",
                 key=f"group_label_{idx}",
             )
-            payers = st.multiselect(
+            payers = ui_widgets.multiselect_existing(
                 "Payers",
-                options=payer_options,
-                default=[],
+                payer_options,
                 key=f"group_{idx}_payers",
             )
-            payees = st.multiselect(
+            payees = ui_widgets.multiselect_existing(
                 "Payees",
-                options=payee_options,
-                default=[],
+                payee_options,
                 key=f"group_{idx}_payees",
             )
             groups.append(
@@ -164,39 +162,56 @@ try:
                 )
             )
 
-    st.subheader("Nodes")
-    mode = st.radio("Computation mode", ["role", "matched_only"], key="compare_mode")
-    node_mode = st.radio("Node selection", ["OR", "AND"], key="compare_node_mode")
+    st.subheader("Mode")
+    mode_label = st.radio(
+        "Computation mode",
+        ["role", "perfect-match"],
+        key="compare_mode",
+        horizontal=True,
+    )
+    mode = "matched_only" if mode_label == "perfect-match" else "role"
 
-    node_entries: List[Node] = []
-    node_tags: List[str] = []
+    st.subheader("Node selection")
+    node_mode_label = st.radio(
+        "Slice mode",
+        ["Category slices + tag filter", "Mixed slices"],
+        key="compare_node_mode",
+        horizontal=True,
+    )
+    node_mode = "and" if node_mode_label == "Category slices + tag filter" else "or"
+
+    and_entries: List[Node] = []
+    or_entries: List[Node] = []
+    and_tags: List[str] = []
     tag_match = comparison_engine.TAG_MATCH_ANY
 
-    if node_mode == "OR":
-        options = _build_or_nodes(category_options, subcategory_pairs, tag_options)
-        node_entries = st.multiselect(
+    if node_mode == "and":
+        node_map = _build_category_nodes(category_options, subcategory_pairs)
+        selected_labels = ui_widgets.multiselect_existing(
+            "Category/subcategory nodes",
+            list(node_map.keys()),
+            key="compare_and_nodes",
+        )
+        if len(selected_labels) > 10:
+            st.error("Select at most 10 nodes.")
+        and_entries = [node_map[label] for label in selected_labels]
+
+        and_tags = ui_widgets.tags_filter("Tags", tag_options, key="compare_and_tags")
+        tag_match = st.selectbox(
+            "Tag match",
+            [comparison_engine.TAG_MATCH_ANY, comparison_engine.TAG_MATCH_ALL],
+            key="compare_tag_match",
+        )
+    else:
+        node_map = _build_or_nodes(category_options, subcategory_pairs, tag_options)
+        selected_labels = ui_widgets.multiselect_existing(
             "Nodes",
-            options=options,
-            format_func=lambda node: node.label,
+            list(node_map.keys()),
             key="compare_or_nodes",
         )
-        if len(node_entries) > 10:
-            st.error("OR mode supports up to 10 nodes.")
-    else:
-        entry_options = _build_entry_nodes(category_options, subcategory_pairs)
-        node_entries = st.multiselect(
-            "Category/Subcategory entries",
-            options=entry_options,
-            format_func=lambda node: node.label,
-            key="compare_and_entries",
-        )
-        if len(node_entries) > 10:
-            st.error("AND mode supports up to 10 category/subcategory entries.")
-
-        node_tags = st.multiselect("Tags", options=tag_options, key="compare_and_tags")
-        tag_match = st.selectbox("Tag match", ["ANY", "ALL"], key="compare_tag_match")
-        if tag_match == "ALL" and len(node_tags) > 5:
-            st.warning("TagMatch ALL with many tags can be slow.")
+        if len(selected_labels) > 10:
+            st.error("Select at most 10 nodes.")
+        or_entries = [node_map[label] for label in selected_labels]
 
     if st.button("Run comparison"):
         errors: List[str] = []
@@ -204,50 +219,86 @@ try:
             errors.extend(period_errors)
         if not groups:
             errors.append("At least one group is required.")
-        if node_mode == "OR" and len(node_entries) > 10:
-            errors.append("Reduce OR nodes to at most 10.")
-        if node_mode == "AND" and len(node_entries) > 10:
-            errors.append("Reduce AND entries to at most 10.")
-        if node_mode == "AND" and not node_entries and not node_tags:
-            errors.append("Select at least one entry or tag in AND mode.")
+        if node_mode == "and" and not and_entries:
+            errors.append("Select at least one category/subcategory node.")
+        if node_mode == "or" and not or_entries:
+            errors.append("Select at least one node.")
+        if node_mode == "and" and len(and_entries) > 10:
+            errors.append("Reduce category/subcategory nodes to at most 10.")
+        if node_mode == "or" and len(or_entries) > 10:
+            errors.append("Reduce nodes to at most 10.")
+
         if errors:
             st.error(" ".join(errors))
         else:
-            if node_mode == "OR":
-                df = comparison_engine.compute_comparison(
-                    conn,
-                    periods=periods,
-                    groups=groups,
-                    mode=mode,
-                    node_mode="or",
-                    date_field=date_field,
-                    or_nodes=node_entries,
-                )
-            else:
-                df = comparison_engine.compute_comparison(
-                    conn,
-                    periods=periods,
-                    groups=groups,
-                    mode=mode,
-                    node_mode="and",
-                    date_field=date_field,
-                    and_entries=node_entries,
-                    and_tags=node_tags,
-                    tag_match=tag_match,
-                )
+            df = comparison_engine.compute_comparison(
+                conn,
+                periods=periods,
+                groups=groups,
+                mode=mode,
+                node_mode=node_mode,
+                date_field=date_field,
+                or_nodes=or_entries,
+                and_entries=and_entries,
+                and_tags=and_tags,
+                tag_match=tag_match,
+            )
 
             if df.empty:
                 st.info("No comparison data generated.")
             else:
                 st.subheader("Results")
-                st.dataframe(df, use_container_width=True)
-
-                metric = st.selectbox(
-                    "Metric",
-                    ["net_cents", "inflow_cents", "outflow_cents", "internal_cents"],
-                    key="compare_metric",
-                )
                 period_order = [period.label for period in periods]
+                node_order = (
+                    [node.label for node in and_entries]
+                    if node_mode == "and"
+                    else [node.label for node in or_entries]
+                )
+
+                for period_label in period_order:
+                    st.markdown(f"### {period_label}")
+                    period_df = df[df["period_label"] == period_label]
+                    for node_label in node_order:
+                        node_df = period_df[period_df["node_label"] == node_label]
+                        if node_df.empty:
+                            continue
+                        st.markdown(f"#### {node_label}")
+                        table = node_df.set_index("group_label")
+                        if mode == "matched_only":
+                            display = pd.DataFrame(
+                                {
+                                    "#transactions": table["tx_count"].astype(int),
+                                    "matched flow": table["matched_flow_cents"].apply(
+                                        lambda v: amounts.format_cents(int(v))
+                                    ),
+                                }
+                            )
+                        else:
+                            display = pd.DataFrame(
+                                {
+                                    "#tx (inflow ∪ outflow)": table["tx_count"].astype(int),
+                                    "inflow": table["inflow_cents"].apply(
+                                        lambda v: amounts.format_cents(int(v))
+                                    ),
+                                    "outflow": table["outflow_cents"].apply(
+                                        lambda v: amounts.format_cents(int(v))
+                                    ),
+                                    "net": table["net_cents"].apply(
+                                        lambda v: amounts.format_cents(int(v))
+                                    ),
+                                }
+                            )
+                        st.dataframe(display, use_container_width=True)
+
+                st.divider()
+                if mode == "matched_only":
+                    metric = "matched_flow_cents"
+                else:
+                    metric = st.selectbox(
+                        "Metric",
+                        ["net_cents", "inflow_cents", "outflow_cents"],
+                        key="compare_metric",
+                    )
                 for group in groups:
                     st.markdown(f"### {group.label}")
                     chart = plotting.grouped_bar_chart(

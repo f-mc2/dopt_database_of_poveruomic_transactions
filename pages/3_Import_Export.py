@@ -1,23 +1,11 @@
 import datetime as dt
-import os
+from pathlib import Path
 from typing import Optional
 
 import sqlite3
 import streamlit as st
 
 from src import csv_io, db, queries, tags, ui_widgets
-
-
-def _convert_empty_selection(selected):
-    return [None if item == "(empty)" else item for item in selected]
-
-DEFAULT_IMPORT_DIR = os.environ.get("FINANCE_CSV_IMPORT_DIR", "/data/csv_import")
-DEFAULT_EXPORT_DIR = os.environ.get("FINANCE_CSV_EXPORT_DIR", "/data/csv_export")
-
-if "csv_import_dir" not in st.session_state:
-    st.session_state.csv_import_dir = DEFAULT_IMPORT_DIR
-if "csv_export_dir" not in st.session_state:
-    st.session_state.csv_export_dir = DEFAULT_EXPORT_DIR
 
 st.title("Import / Export")
 
@@ -29,23 +17,40 @@ conn: Optional[sqlite3.Connection] = None
 try:
     conn = db.connect(st.session_state.db_path)
 
-    tab_import, tab_export = st.tabs(["Import", "Export"])
+    tab_import, tab_export, tab_backup = st.tabs(["Import", "Export", "Backup"])
 
     with tab_import:
         st.subheader("CSV import")
-        st.text_input("Import directory", value=st.session_state.csv_import_dir, key="csv_import_dir")
-        st.caption("Upload a semicolon-separated CSV file with both date fields.")
+        st.text_input(
+            "Import directory",
+            value=st.session_state.csv_import_dir,
+            disabled=True,
+        )
+        st.caption("Upload a semicolon-separated CSV file. Headers are trimmed and case-insensitive.")
 
         uploaded = st.file_uploader("Choose a CSV file", type=["csv"], key="csv_import_file")
         if uploaded is not None:
             contents = uploaded.getvalue()
             decoded = csv_io.decode_csv_bytes(contents)
-            headers, raw_rows = csv_io.read_csv_rows(decoded)
+            try:
+                headers, raw_rows = csv_io.read_csv_rows(decoded)
+            except ValueError as exc:
+                st.error(str(exc))
+                headers, raw_rows = [], []
 
-            missing = sorted(csv_io.REQUIRED_COLUMNS.difference(headers))
+            header_set = set(headers)
+            missing = sorted(csv_io.REQUIRED_COLUMNS.difference(header_set))
+            missing_dates = not header_set.intersection(csv_io.DATE_COLUMNS)
+            missing_parties = not header_set.intersection(csv_io.PAYER_PAYEE_COLUMNS)
+
             if missing:
                 st.error(f"Missing required columns: {', '.join(missing)}")
-            else:
+            if missing_dates:
+                st.error("CSV must include date_payment or date_application column.")
+            if missing_parties:
+                st.error("CSV must include payer or payee column.")
+
+            if headers and not missing and not missing_dates and not missing_parties:
                 st.write(f"Detected columns: {', '.join(headers)}")
                 preview = csv_io.preview_rows(raw_rows)
                 if preview:
@@ -70,15 +75,20 @@ try:
 
     with tab_export:
         st.subheader("CSV export")
-        st.text_input("Export directory", value=st.session_state.csv_export_dir, key="csv_export_dir")
+        st.text_input(
+            "Export directory",
+            value=st.session_state.csv_export_dir,
+            disabled=True,
+        )
 
         date_field_labels = {
-            "Payment date": "date_payment",
             "Application date": "date_application",
+            "Payment date": "date_payment",
         }
         selected_label = st.selectbox(
             "Date field for range",
             list(date_field_labels.keys()),
+            index=0,
             key="export_date_field",
         )
         date_field = date_field_labels[selected_label]
@@ -87,44 +97,62 @@ try:
         if min_date is None or max_date is None:
             st.warning("No transactions available to export.")
         else:
-            start_key = f"export_start_date_{date_field}"
-            end_key = f"export_end_date_{date_field}"
-            start_default = st.session_state.get(start_key)
-            end_default = st.session_state.get(end_key)
-            if start_default is None:
-                start_default = dt.date.fromisoformat(min_date)
-            elif isinstance(start_default, str):
-                start_default = dt.date.fromisoformat(start_default)
-            if end_default is None:
-                end_default = dt.date.fromisoformat(max_date)
-            elif isinstance(end_default, str):
-                end_default = dt.date.fromisoformat(end_default)
+            start_default = dt.date.fromisoformat(min_date)
+            end_default = dt.date.fromisoformat(max_date)
 
             date_col1, date_col2 = st.columns(2)
             with date_col1:
-                start_date = st.date_input("Start date", value=start_default, key=start_key)
+                start_date = st.date_input(
+                    "Start date", value=start_default, key="export_start_date"
+                )
             with date_col2:
-                end_date = st.date_input("End date", value=end_default, key=end_key)
+                end_date = st.date_input("End date", value=end_default, key="export_end_date")
 
             payer_options = queries.get_distinct_values(conn, "payer")
             payee_options = queries.get_distinct_values(conn, "payee")
+            payment_type_options = queries.get_distinct_values(conn, "payment_type")
             category_options = queries.get_distinct_values(conn, "category")
-            subcategory_options = queries.get_distinct_values(conn, "subcategory")
+            subcategory_pairs = queries.get_category_subcategory_pairs(conn)
             tag_options = tags.list_tags(conn)
 
-            payer_filter = ui_widgets.typeahead_multi_select(
-                "Payers", ["(empty)"] + payer_options, key="export_payers"
+            payer_filter = ui_widgets.multiselect_existing(
+                "Payers", payer_options, key="export_payers"
             )
-            payee_filter = ui_widgets.typeahead_multi_select(
-                "Payees", ["(empty)"] + payee_options, key="export_payees"
+            include_missing_payer = st.checkbox(
+                "Include missing payer", key="export_missing_payer"
             )
-            category_filter = ui_widgets.typeahead_multi_select(
+            payee_filter = ui_widgets.multiselect_existing(
+                "Payees", payee_options, key="export_payees"
+            )
+            include_missing_payee = st.checkbox(
+                "Include missing payee", key="export_missing_payee"
+            )
+            payment_type_filter = ui_widgets.multiselect_existing(
+                "Payment types", payment_type_options, key="export_payment_types"
+            )
+            include_missing_payment_type = st.checkbox(
+                "Include missing payment type", key="export_missing_payment_type"
+            )
+            category_filter = ui_widgets.multiselect_existing(
                 "Categories", category_options, key="export_categories"
             )
-            subcategory_filter = ui_widgets.typeahead_multi_select(
-                "Subcategories", ["(empty)"] + subcategory_options, key="export_subcategories"
+            subcategory_candidates = (
+                [pair for pair in subcategory_pairs if pair[0] in category_filter]
+                if category_filter
+                else subcategory_pairs
             )
-            tag_filter = ui_widgets.typeahead_multi_select("Tags", tag_options, key="export_tags")
+            sub_labels = []
+            label_map = {}
+            for category, subcategory in subcategory_candidates:
+                label = f"{category} / {subcategory}"
+                label_map[label] = (category, subcategory)
+                sub_labels.append(label)
+            subcategory_filter_labels = ui_widgets.multiselect_existing(
+                "Subcategories", sub_labels, key="export_subcategories"
+            )
+            subcategory_filter = [label_map[label] for label in subcategory_filter_labels]
+
+            tag_filter = ui_widgets.tags_filter("Tags", tag_options, key="export_tags")
 
             if st.button("Generate export"):
                 if start_date > end_date:
@@ -134,13 +162,17 @@ try:
                         "date_field": date_field,
                         "date_start": start_date.isoformat(),
                         "date_end": end_date.isoformat(),
-                        "payers": _convert_empty_selection(payer_filter),
-                        "payees": _convert_empty_selection(payee_filter),
+                        "payers": payer_filter,
+                        "payees": payee_filter,
+                        "payment_types": payment_type_filter,
                         "categories": category_filter,
-                        "subcategories": _convert_empty_selection(subcategory_filter),
+                        "subcategory_pairs": subcategory_filter,
                         "tags": tag_filter,
+                        "include_missing_payer": include_missing_payer,
+                        "include_missing_payee": include_missing_payee,
+                        "include_missing_payment_type": include_missing_payment_type,
                     }
-                    rows = queries.list_transactions(conn, filters)
+                    rows = queries.list_transactions(conn, filters, sort_by=date_field)
                     csv_text = csv_io.export_to_csv(rows)
                     filename = csv_io.default_export_filename()
                     st.session_state.export_csv_text = csv_text
@@ -170,6 +202,29 @@ try:
                             st.success(f"Saved to {saved_path}")
                         except OSError as exc:
                             st.error(f"Failed to save export: {exc}")
+
+    with tab_backup:
+        st.subheader("Backup")
+        st.text_input(
+            "Backup directory",
+            value=st.session_state.db_backup_dir,
+            disabled=True,
+        )
+        confirm_backup = st.checkbox("Confirm backup", key="backup_confirm")
+        if st.button("Create backup"):
+            if not confirm_backup:
+                st.warning("Please confirm backup.")
+            else:
+                backup_dir = Path(st.session_state.db_backup_dir)
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"finance_backup_{timestamp}.db"
+                target_path = backup_dir / filename
+                try:
+                    db.backup_db(conn, str(target_path))
+                    st.success(f"Backup created: {target_path}")
+                except sqlite3.Error as exc:
+                    st.error(f"Backup failed: {exc}")
 
 finally:
     if conn is not None:
