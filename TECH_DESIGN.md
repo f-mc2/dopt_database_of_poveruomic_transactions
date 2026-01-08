@@ -38,7 +38,12 @@ Schema (logical):
   - subcategory TEXT NULL
   - payment_type TEXT NULL
   - notes TEXT NULL
-  - CHECK (length(trim(category)) > 0)
+  - CHECK (length(trim(category)) > 0 AND category = lower(trim(category)))
+  - CHECK (payer IS NULL OR (length(trim(payer)) > 0 AND payer = lower(trim(payer))))
+  - CHECK (payee IS NULL OR (length(trim(payee)) > 0 AND payee = lower(trim(payee))))
+  - CHECK (subcategory IS NULL OR (length(trim(subcategory)) > 0 AND subcategory = lower(trim(subcategory))))
+  - CHECK (payment_type IS NULL OR (length(trim(payment_type)) > 0 AND payment_type = lower(trim(payment_type))))
+  - CHECK (notes IS NULL OR length(trim(notes)) > 0)
   - CHECK (amount_cents >= 0)
   - CHECK (date_payment GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND
       date(date_payment) IS NOT NULL AND date(date_payment) = date_payment)
@@ -90,6 +95,8 @@ Settings rules:
 - Notes are trimmed but preserve case.
 - Tag names cannot contain commas (to keep CSV round-trip safe).
 - Empty strings become NULL for nullable fields.
+- DB enforces lowercase normalization and non-empty values for finance-domain fields
+  (nullable fields must be NULL or non-empty after trim).
 - Dates must be YYYY-MM-DD; DB enforces ISO shape and non-null parseability via CHECK,
   and the app enforces calendar validity.
 - Full calendar validity is enforced in application code via `datetime.date.fromisoformat()`.
