@@ -48,16 +48,20 @@ The app runs on a desktop host and is usable on mobile browsers.
 - T3: Missing-value toggles for payer/payee/payment_type.
 - T4: Subcategory options are filtered by selected category.
 - T5: Tag filters use ANY semantics; if tags selected, untagged tx are excluded.
-- T6: List view is a scrollable table with all fields as columns.
-- T7: User can hide/show columns and order by a selected column (asc/desc).
-- T8: Add/edit forms support all fields and tag assignment.
-- T9: If only one date is provided, auto-copy to the other before save.
-- T10: Delete requires confirmation.
+- T6: List view is a scrollable table with all fields as columns; tags shown as a comma-separated,
+  lexicographically sorted list.
+- T7: User can hide/show columns.
+- T8: Ordering by a selected column (asc/desc) applies to the full filtered result; default order
+  is date_application desc, id desc.
+- T9: Add/edit forms support all fields and tag assignment.
+- T10: If only one date is provided, auto-copy to the other before save.
+- T11: Delete requires confirmation.
 
 ### Import/Export/Backup
 - IE1: Import semicolon-separated CSV with strict validation and atomic insert.
 - IE2: Required columns: `amount`, `category`, at least one of `date_payment`/`date_application`,
   and at least one of `payer`/`payee`.
+- IE2a: CSV headers are trimmed and case-insensitive; duplicates after normalization are invalid.
 - IE3: Amount format: dot decimal only; 0-2 fractional digits; no commas or thousands separators;
   no sign; reject >2 decimals.
 - IE4: Tags column is comma-separated; no escaping; tag names cannot contain commas.
@@ -101,8 +105,10 @@ Authoritative definitions are in `DATA_DICTIONARY.md`. Key rules:
 - Notes preserve case; empty/whitespace-only values are invalid if not NULL.
 - Tag names are normalized, non-empty, and cannot contain commas (DB CHECK).
 - Payer/payee cannot both be NULL and cannot be equal (DB CHECK).
-- Dates must be ISO shape; DB enforces shape/parseability; app validates calendar validity.
+- Dates must be ISO shape; DB enforces shape/SQLite parseability; app validates with
+  `datetime.date.fromisoformat()` for user-friendly errors.
 - All SQL uses parameter placeholders (`?`).
+- All write paths normalize input and convert empty/whitespace-only values to NULL before insert/update.
 
 ## Comparison Semantics (Summary)
 For each period P, group G=(A,B), node N:
@@ -137,4 +143,5 @@ For each period P, group G=(A,B), node N:
 
 ## Risks / Notes
 - DB-level normalization requires strict normalization in all writes; app should normalize before insert.
-- Enabling strict DB checks assumes new DBs or migrated data.
+- Enabling strict DB checks assumes new DBs or migrated data; app should fail fast with a clear
+  message if existing data violates CHECK constraints.
