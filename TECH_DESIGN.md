@@ -48,8 +48,8 @@ Schema (logical):
   - CHECK (payer IS NULL OR payee IS NULL OR payer <> payee)
 - `tags`:
   - id INTEGER PRIMARY KEY
-  - name TEXT NOT NULL UNIQUE CHECK (length(trim(name)) > 0)
-    CHECK (instr(name, ',') = 0) CHECK (name = lower(trim(name)))
+  - name TEXT NOT NULL UNIQUE
+    CHECK (length(trim(name)) > 0 AND instr(name, ',') = 0 AND name = lower(trim(name)))
 - `transaction_tags`:
   - transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE
   - tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE
@@ -90,7 +90,8 @@ Settings rules:
 - Notes are trimmed but preserve case.
 - Tag names cannot contain commas (to keep CSV round-trip safe).
 - Empty strings become NULL for nullable fields.
-- Dates must be YYYY-MM-DD; DB enforces ISO shape via CHECK, and the app enforces calendar validity.
+- Dates must be YYYY-MM-DD; DB enforces ISO shape and non-null parseability via CHECK,
+  and the app enforces calendar validity.
 - Full calendar validity is enforced in application code via `datetime.date.fromisoformat()`.
 - If only one of `date_payment` or `date_application` is provided (UI/CSV), copy it to the other
   before insert.
