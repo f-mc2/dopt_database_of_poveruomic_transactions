@@ -5,8 +5,10 @@ import pandas as pd
 import sqlite3
 import streamlit as st
 
-from src import amounts, comparison_engine, db, plotting, queries, tags, ui_widgets
+from src import amounts, comparison_engine, db, plotting, queries, session_state, tags, ui_widgets
 from src.types import Group, Node, Period
+
+session_state.ensure_db_session_state()
 
 st.title("Compare")
 

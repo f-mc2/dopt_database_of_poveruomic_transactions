@@ -3,7 +3,9 @@ from typing import Optional
 
 import streamlit as st
 
-from src import db, tags, ui_widgets, values
+from src import db, session_state, tags, ui_widgets, values
+
+session_state.ensure_db_session_state()
 
 st.title("Manage Values")
 
