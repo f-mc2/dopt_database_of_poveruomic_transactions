@@ -1,0 +1,23 @@
+[[pages]]
+path = "app.py"
+name = "HOME"
+
+[[pages]]
+path = "pages/1_Tutorial.py"
+name = "Tutorial"
+
+[[pages]]
+path = "pages/2_Transactions.py"
+name = "Transactions"
+
+[[pages]]
+path = "pages/3_Import_Export.py"
+name = "Import Export"
+
+[[pages]]
+path = "pages/4_Manage_Values.py"
+name = "Manage Values"
+
+[[pages]]
+path = "pages/5_Compare.py"
+name = "Compare"

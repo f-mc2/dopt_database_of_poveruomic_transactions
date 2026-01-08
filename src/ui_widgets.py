@@ -4,6 +4,42 @@ import streamlit as st
 
 _NO_MATCHES = "(no matches)"
 _NONE = "(none)"
+_NAV_ITEMS = (
+    ("app.py", "HOME"),
+    ("pages/1_Tutorial.py", "Tutorial"),
+    ("pages/2_Transactions.py", "Transactions"),
+    ("pages/3_Import_Export.py", "Import Export"),
+    ("pages/4_Manage_Values.py", "Manage Values"),
+    ("pages/5_Compare.py", "Compare"),
+)
+
+
+def render_sidebar_nav() -> None:
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebarNav"] { display: none; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    for path, label in _NAV_ITEMS:
+        _page_link(path, label)
+
+
+def _page_link(path: str, label: str) -> None:
+    if hasattr(st.sidebar, "page_link"):
+        st.sidebar.page_link(path, label=label)
+        return
+    if hasattr(st, "page_link"):
+        with st.sidebar:
+            st.page_link(path, label=label)
+        return
+    if hasattr(st, "switch_page"):
+        if st.sidebar.button(label):
+            st.switch_page(path)
+        return
+    st.sidebar.write(label)
 
 
 def select_or_create(

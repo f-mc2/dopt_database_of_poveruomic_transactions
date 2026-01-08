@@ -8,6 +8,7 @@ import streamlit as st
 from src import amounts, db, queries, session_state, tags, ui_widgets
 
 session_state.ensure_db_session_state()
+ui_widgets.render_sidebar_nav()
 
 st.title("Transactions")
 

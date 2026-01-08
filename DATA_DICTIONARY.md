@@ -101,6 +101,7 @@ Many-to-many join between transactions and tags.
 Stored alongside the active finance DB (same directory as the resolved FINANCE_DB_PATH).
 Defaults to `/data/app_settings.db` when using `/data/finance.db`, or `./data/app_settings.db`
 when using the repo data directory. If FINANCE_DB_PATH points elsewhere, the settings DB follows it.
+Theme is controlled by Streamlit settings and is not stored in this DB.
 
 ### app_settings
 Single-row table (id = 1).
@@ -112,10 +113,6 @@ Single-row table (id = 1).
 - last_used_db_path
   - Type: TEXT NULL
   - Meaning: last selected finance DB path
-- theme
-  - Type: TEXT NOT NULL
-  - Meaning: UI theme, one of "light" or "dark"
-  - Validation: must be "light" or "dark" (DB CHECK constraint)
 - csv_import_dir
   - Type: TEXT NULL
   - Meaning: configured CSV import directory path

@@ -21,7 +21,6 @@ SETTINGS_SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS app_settings (
   id INTEGER PRIMARY KEY CHECK (id = 1),
   last_used_db_path TEXT NULL,
-  theme TEXT NOT NULL CHECK (theme IN ('light', 'dark')),
   csv_import_dir TEXT NULL,
   csv_export_dir TEXT NULL,
   db_backup_dir TEXT NULL
@@ -31,8 +30,6 @@ CREATE TABLE IF NOT EXISTS recent_db_paths (
   path TEXT PRIMARY KEY,
   last_used_at INTEGER NOT NULL
 );
-
-INSERT OR IGNORE INTO app_settings (id, theme) VALUES (1, 'light');
 """
 
 
@@ -56,6 +53,11 @@ def init_db(conn: sqlite3.Connection, schema_path: str) -> None:
 
 def init_settings_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SETTINGS_SCHEMA_SQL)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(app_settings)")}
+    if "theme" in columns:
+        conn.execute("INSERT OR IGNORE INTO app_settings (id, theme) VALUES (1, 'light')")
+    else:
+        conn.execute("INSERT OR IGNORE INTO app_settings (id) VALUES (1)")
     conn.commit()
 
 

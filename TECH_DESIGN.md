@@ -78,7 +78,6 @@ Schema (logical):
 - `app_settings` (single row enforced by CHECK):
   - id INTEGER PRIMARY KEY CHECK (id = 1)
   - last_used_db_path TEXT NULL
-  - theme TEXT NOT NULL CHECK (theme IN ('light','dark'))
   - csv_import_dir TEXT NULL
   - csv_export_dir TEXT NULL
   - db_backup_dir TEXT NULL
@@ -90,6 +89,7 @@ Settings rules:
 - Paths are stored verbatim (case-preserving).
 - Recent DBs list is capped at 3 by `last_used_at`.
 - Environment defaults are used when the stored setting is NULL.
+- Theme is controlled by Streamlit settings; the app does not store theme.
 
 ## Validation and Normalization
 - Finance-domain text fields are trimmed and lowercased:

@@ -139,8 +139,8 @@ Environment defaults:
 Settings DB (`app_settings.db` stored next to FINANCE_DB_PATH; default `/data/app_settings.db`) persists:
 - last-used DB
 - recent DBs (max 3)
-- theme (light/dark)
 - import/export/backup dirs (editable in UI)
+- Theme uses Streamlit settings (light/dark/system); not stored in the settings DB.
 
 ## 8) UI behavior requirements
 - Follow `UI_BLUEPRINT.md` for patterns and page behavior.

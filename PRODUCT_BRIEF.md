@@ -28,13 +28,13 @@ safe database backups.
 ## MVP Scope
 ### In Scope
 - Streamlit multipage UI with pages for Home, Transactions, Import/Export (including Backup),
-  Manage Values, and Compare.
+  Manage Values, Compare, and Tutorial.
 - SQLite via Python sqlite3 with WAL and foreign keys enabled.
 - Normalized tags (tags, transaction_tags).
 - Amounts stored as integer cents only.
 - Case-insensitive search; finance-domain values stored in lowercase (notes preserve case).
 - Payer and payee must differ on every transaction (cannot be equal or both NULL).
-- Settings DB to persist UI preferences (theme, recent DBs, configured directories).
+- Settings DB to persist last-used DB, recent DBs, and configured directories.
 
 ### Out of Scope (Later)
 - Multi-currency support.

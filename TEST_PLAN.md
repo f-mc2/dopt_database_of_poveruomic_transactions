@@ -13,7 +13,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
 
 ### App Boot + Settings
 - Open app with a new DB path under `./.tmp_test/`; confirm DB is created.
-- Change theme and confirm persistence across reload.
+- Verify the app does not override the Streamlit theme setting (light/dark/system).
 - Set import/export/backup dirs in settings and confirm persistence across reload.
 - Switch DBs; confirm session filters reset and a confirmation appears.
 

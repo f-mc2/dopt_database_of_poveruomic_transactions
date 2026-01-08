@@ -4,10 +4,10 @@ import sqlite3
 
 import streamlit as st
 
-from src import db, session_state, settings
+from src import db, session_state, settings, ui_widgets
 
 st.set_page_config(
-    page_title="Database of Poveruomic Transactions",
+    page_title="HOME",
     page_icon="\U0001F4B6",
     initial_sidebar_state="auto",
     layout="wide",
@@ -17,42 +17,8 @@ REPO_ROOT = Path(__file__).resolve().parent
 SCHEMA_PATH = REPO_ROOT / "schema.sql"
 
 
-def _apply_theme(theme: str) -> None:
-    if theme == "dark":
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background-color: #0f1116;
-                color: #e6e8ec;
-            }
-            .stTextInput>div>div>input,
-            .stTextArea textarea,
-            .stSelectbox>div>div {
-                background-color: #1b1f27;
-                color: #e6e8ec;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-    elif theme == "light":
-        st.markdown(
-            """
-            <style>
-            .stApp {
-                background-color: #f7f8fb;
-                color: #111827;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-
-
 def _reset_session_state(
     new_db_path: str,
-    theme: str,
     import_dir: str,
     export_dir: str,
     backup_dir: str,
@@ -61,7 +27,6 @@ def _reset_session_state(
     st.session_state.db_path = new_db_path
     st.session_state.db_ready = False
     st.session_state.db_auto_open_attempted = False
-    st.session_state.theme = theme
     st.session_state.csv_import_dir = import_dir
     st.session_state.csv_export_dir = export_dir
     st.session_state.db_backup_dir = backup_dir
@@ -81,13 +46,12 @@ def _ensure_parent_dir(path: Path) -> bool:
     return False
 
 
-st.title("Home")
+st.markdown("# Home")
 
 settings_conn = settings.connect_settings_db()
 session_state.ensure_db_session_state(settings_conn)
+ui_widgets.render_sidebar_nav()
 recent_paths = settings.get_recent_db_paths(settings_conn)
-
-_apply_theme(st.session_state.theme)
 
 st.subheader("Database selection")
 if st.session_state.get("db_auto_open_error"):
@@ -125,7 +89,6 @@ if st.button("Use selected path"):
         else:
             _reset_session_state(
                 selected_path,
-                st.session_state.theme,
                 st.session_state.csv_import_dir,
                 st.session_state.csv_export_dir,
                 st.session_state.db_backup_dir,
@@ -191,19 +154,6 @@ else:
                         conn.close()
 
 st.divider()
-st.subheader("Theme")
-selected_theme = st.radio(
-    "Theme",
-    ["light", "dark"],
-    index=0 if st.session_state.theme == "light" else 1,
-    horizontal=True,
-)
-if selected_theme != st.session_state.theme:
-    st.session_state.theme = selected_theme
-    settings.update_app_settings(settings_conn, theme=selected_theme)
-    st.rerun()
-
-st.divider()
 st.subheader("Directories")
 with st.form("directory_settings"):
     import_dir = st.text_input("CSV import directory", st.session_state.csv_import_dir)
@@ -221,11 +171,5 @@ if dir_submit:
         db_backup_dir=st.session_state.db_backup_dir,
     )
     st.success("Directories saved.")
-
-st.divider()
-st.subheader("Tutorial")
-st.write(
-    "This page will include a short tutorial and a comparison logic explainer in a later step."
-)
 
 settings_conn.close()

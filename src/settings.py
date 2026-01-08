@@ -52,7 +52,7 @@ def get_app_settings(conn: sqlite3.Connection) -> Dict[str, Optional[str]]:
     row = db.fetch_one(
         conn,
         """
-        SELECT last_used_db_path, theme, csv_import_dir, csv_export_dir, db_backup_dir
+        SELECT last_used_db_path, csv_import_dir, csv_export_dir, db_backup_dir
         FROM app_settings
         WHERE id = 1
         """,
@@ -60,14 +60,12 @@ def get_app_settings(conn: sqlite3.Connection) -> Dict[str, Optional[str]]:
     if row is None:
         return {
             "last_used_db_path": None,
-            "theme": "light",
             "csv_import_dir": None,
             "csv_export_dir": None,
             "db_backup_dir": None,
         }
     return {
         "last_used_db_path": row["last_used_db_path"],
-        "theme": row["theme"],
         "csv_import_dir": row["csv_import_dir"],
         "csv_export_dir": row["csv_export_dir"],
         "db_backup_dir": row["db_backup_dir"],
@@ -75,7 +73,7 @@ def get_app_settings(conn: sqlite3.Connection) -> Dict[str, Optional[str]]:
 
 
 def update_app_settings(conn: sqlite3.Connection, **fields: Optional[str]) -> None:
-    allowed = {"last_used_db_path", "theme", "csv_import_dir", "csv_export_dir", "db_backup_dir"}
+    allowed = {"last_used_db_path", "csv_import_dir", "csv_export_dir", "db_backup_dir"}
     updates = {key: value for key, value in fields.items() if key in allowed}
     if not updates:
         return

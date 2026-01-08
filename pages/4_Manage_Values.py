@@ -6,6 +6,7 @@ import streamlit as st
 from src import db, session_state, tags, ui_widgets, values
 
 session_state.ensure_db_session_state()
+ui_widgets.render_sidebar_nav()
 
 st.title("Manage Values")
 

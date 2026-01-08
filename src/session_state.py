@@ -24,8 +24,6 @@ def ensure_db_session_state(settings_conn: Optional[sqlite3.Connection] = None) 
         st.session_state.db_auto_open_attempted = False
     if "db_auto_open_error" not in st.session_state:
         st.session_state.db_auto_open_error = None
-    if "theme" not in st.session_state:
-        st.session_state.theme = app_settings.get("theme") or "light"
     if "csv_import_dir" not in st.session_state:
         st.session_state.csv_import_dir = settings.resolve_setting(
             app_settings.get("csv_import_dir"), settings.DEFAULT_IMPORT_DIR

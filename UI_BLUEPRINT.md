@@ -12,8 +12,10 @@
 - Tag names cannot contain commas to ensure CSV round-tripping.
 - Missing payer/payee/payment_type are stored as NULL; NULL values are not selectable in filters.
 - Payer must always differ from payee; operations that would violate this are blocked with a warning.
-- Selected database path and UI theme persist across sessions via a small settings SQLite DB
-  stored in the data directory (gitignored); it remembers last-used DB and up to 3 recent DBs.
+- Selected database path and configured import/export/backup directories persist across sessions
+  via a small settings SQLite DB stored in the data directory (gitignored); it remembers the
+  last-used DB and up to 3 recent DBs.
+- UI theme uses Streamlit's native setting (light/dark/system); the app does not override it.
 
 ## Widget Patterns
 
@@ -44,16 +46,19 @@ Filter by tags from existing values only.
 
 ### Home
 Purpose: quick orientation and app status.
+- Sidebar label for the main page is "HOME"; top header reads "Home" with a matching anchor.
 - Database selection:
   - Default path from environment.
   - Recent DB list (max 3) plus manual path input to override.
   - Allow creating a new empty DB if the path does not exist (default under data dir).
   - Persist selection across sessions and load the chosen database on startup.
   - Switching DBs resets session filters/state and shows a confirmation.
-- Theme selector (light/dark), persisted across sessions in the settings DB.
+- Configuration section for import/export/backup directories (editable, persisted in settings DB).
+
+### Tutorial
+Purpose: README-style onboarding and comparison explainer.
 - README-style tutorial section (headers, text, bullets) with a comparison logic explainer;
   optional images; final content defined later.
-- Configuration section for import/export/backup directories (editable, persisted in settings DB).
 
 ### Transactions
 Purpose: view and maintain transactions.

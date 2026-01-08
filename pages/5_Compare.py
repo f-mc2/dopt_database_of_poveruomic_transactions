@@ -9,6 +9,7 @@ from src import amounts, comparison_engine, db, plotting, queries, session_state
 from src.types import Group, Node, Period
 
 session_state.ensure_db_session_state()
+ui_widgets.render_sidebar_nav()
 
 st.title("Compare")
 

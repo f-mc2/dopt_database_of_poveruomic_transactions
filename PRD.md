@@ -38,9 +38,13 @@ The app runs on a desktop host and is usable on mobile browsers.
 - H2: Allow creating a new empty DB if the path does not exist (default under data dir).
 - H3: Persist last-used DB and recent list in settings DB; load on startup.
 - H4: Switching DB resets session filters/state and shows confirmation.
-- H5: Theme selector (light/dark), persisted in settings DB.
-- H6: Editable config for import/export/backup directories, persisted in settings DB.
-- H7: README-style tutorial section; content finalized later.
+- H5: Sidebar label for the main page is "HOME"; the top header is "Home" with a matching anchor.
+- H6: Theme is controlled by Streamlit settings (light/dark/system); no in-app theme selector.
+- H7: Editable config for import/export/backup directories, persisted in settings DB.
+
+### Tutorial
+- TU1: Dedicated tutorial page in the sidebar (label "Tutorial").
+- TU2: README-style tutorial section with comparison logic explainer; content finalized later.
 
 ### Transactions
 - T1: Filters include date range, payer, payee, category, subcategory, payment_type, tags.
@@ -132,8 +136,8 @@ For each period P, group G=(A,B), node N:
 ## Settings and Persistence
 - Settings DB: `app_settings.db` stored alongside the active finance DB (parent of FINANCE_DB_PATH);
   default `/data/app_settings.db` when using `/data/finance.db`, or `./data/app_settings.db`
-  when using the repo data directory; stores theme, last-used DB, recent DBs (max 3),
-  and import/export/backup dirs.
+  when using the repo data directory; stores last-used DB, recent DBs (max 3), and
+  import/export/backup dirs.
 - Settings DB is the only persisted UI config; no saved reports/presets.
 
 ## Non-functional Requirements
