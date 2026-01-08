@@ -6,6 +6,8 @@ privacy leaks, and unintended scope creep.
 ## 0) Phase rule (spec-first)
 - Until the user explicitly approves `PRD.md`, only documentation changes are allowed.
 - During the spec-only phase, commits must use the `docs:` prefix.
+During the spec-only phase, do not create or modify runtime files (`app.py`, `src/`, `pages/`,
+`schema.sql`, `Dockerfile`, `docker-compose.yml`, `requirements.txt`, etc.).
 
 ## 1) Scope and workspace boundaries (hard rules)
 
@@ -34,6 +36,8 @@ Hard rules:
 - Never read, print, open, parse, or upload anything under `data/`.
 - Never read/write/open any `*.db`, `*.db-wal`, `*.db-shm` under `data/`.
 - Never read/print CSVs or backups under `data/`.
+Note: the app will read/write the finance DB at runtime when the user runs it.
+These restrictions apply to the agent (and automated tests) during development.
 
 ### Synthetic test data only
 Allowed locations for synthetic data:
@@ -79,6 +83,8 @@ Do not invent features.
   - `amount_cents INTEGER NOT NULL`, non-negative
   - UI/CSV amounts parsed to cents, 0-2 decimals, no signs, no commas
 - Finance-domain text fields must already be normalized (lower(trim())); DB rejects non-normalized.
+- Finance-domain text fields must already be normalized (lower(trim()));
+  DB rejects non-normalized values; app must normalize before writes.
 - Notes preserve case; empty/whitespace-only values are invalid if not NULL.
 - Tags normalized and comma-free:
   - `tags(id, name UNIQUE)` with CHECKs for lower(trim()), non-empty, no commas
@@ -110,6 +116,10 @@ Keep files small (<250–300 LOC each).
 - `Dockerfile`
 - `docker-compose.yml`
 - `.gitignore` must ignore `data/`, `*.db*`, `.tmp_test/`
+
+## 6a) Schema drift guardrail
+- Schema changes must be applied consistently across `schema.sql`, `DATA_DICTIONARY.md`,
+  `TECH_DESIGN.md`, and `PRD.md`. No schema drift.
 
 ## 7) Configuration (host vs Docker)
 Host-side repo uses `data/` (gitignored):
@@ -163,6 +173,7 @@ slice modes, TagMatch ANY/ALL, node outputs).
 - Use synthetic data only (`tests/fixtures`, `./.tmp_test/`, or `:memory:`).
 - Use file-backed DBs under `./.tmp_test/` for WAL/backup tests.
 - Never open or read any DB/CSV under `data/`.
+- Tests must defensively fail if any path under `./data` or `/data` is referenced.
 
 ## 12) Commits
 - Commit early, commit often.
