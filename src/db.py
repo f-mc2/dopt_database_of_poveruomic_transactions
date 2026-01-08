@@ -15,9 +15,25 @@ REQUIRED_TRANSACTION_COLUMNS = {
     "category",
     "subcategory",
     "notes",
-    "created_at",
-    "updated_at",
 }
+
+SETTINGS_SCHEMA_SQL = """
+CREATE TABLE IF NOT EXISTS app_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  last_used_db_path TEXT NULL,
+  theme TEXT NOT NULL CHECK (theme IN ('light', 'dark')),
+  csv_import_dir TEXT NULL,
+  csv_export_dir TEXT NULL,
+  db_backup_dir TEXT NULL
+);
+
+CREATE TABLE IF NOT EXISTS recent_db_paths (
+  path TEXT PRIMARY KEY,
+  last_used_at INTEGER NOT NULL
+);
+
+INSERT OR IGNORE INTO app_settings (id, theme) VALUES (1, 'light');
+"""
 
 
 def connect(db_path: str, timeout: int = DEFAULT_TIMEOUT_SECONDS) -> sqlite3.Connection:
@@ -35,6 +51,11 @@ def _configure_connection(conn: sqlite3.Connection) -> None:
 def init_db(conn: sqlite3.Connection, schema_path: str) -> None:
     schema_sql = Path(schema_path).read_text(encoding="utf-8")
     conn.executescript(schema_sql)
+    conn.commit()
+
+
+def init_settings_db(conn: sqlite3.Connection) -> None:
+    conn.executescript(SETTINGS_SCHEMA_SQL)
     conn.commit()
 
 
