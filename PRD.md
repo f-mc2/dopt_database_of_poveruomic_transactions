@@ -126,7 +126,9 @@ For each period P, group G=(A,B), node N:
   - `#transactions` = distinct matched tx.
 
 ## Settings and Persistence
-- Settings DB: `/data/app_settings.db` with theme, last-used DB, recent DBs (max 3),
+- Settings DB: `app_settings.db` stored alongside the active finance DB (parent of FINANCE_DB_PATH);
+  default `/data/app_settings.db` when using `/data/finance.db`, or `./data/app_settings.db`
+  when using the repo data directory; stores theme, last-used DB, recent DBs (max 3),
   and import/export/backup dirs.
 - Settings DB is the only persisted UI config; no saved reports/presets.
 
