@@ -38,6 +38,7 @@ Schema (logical):
   - subcategory TEXT NULL
   - payment_type TEXT NULL
   - notes TEXT NULL
+  - CHECK (length(trim(category)) > 0)
   - CHECK (amount_cents >= 0)
   - CHECK (date_payment GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND
       date(date_payment) IS NOT NULL AND date(date_payment) = date_payment)
@@ -47,7 +48,7 @@ Schema (logical):
   - CHECK (payer IS NULL OR payee IS NULL OR payer <> payee)
 - `tags`:
   - id INTEGER PRIMARY KEY
-  - name TEXT NOT NULL UNIQUE CHECK (instr(name, ',') = 0)
+  - name TEXT NOT NULL UNIQUE CHECK (length(trim(name)) > 0) CHECK (instr(name, ',') = 0)
 - `transaction_tags`:
   - transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE
   - tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE
@@ -88,7 +89,8 @@ Settings rules:
 - Notes are trimmed but preserve case.
 - Tag names cannot contain commas (to keep CSV round-trip safe).
 - Empty strings become NULL for nullable fields.
-- Dates must be YYYY-MM-DD; DB enforces format with CHECK using GLOB + date().
+- Dates must be YYYY-MM-DD; DB enforces ISO shape and basic ranges with CHECK using GLOB + date().
+- Full calendar validity is enforced in application code via `datetime.date.fromisoformat()`.
 - If only one of `date_payment` or `date_application` is provided (UI/CSV), copy it to the other
   before insert.
 - Payer/payee invariants (not both NULL, not equal) are validated in code and enforced in DB.
@@ -100,8 +102,8 @@ Settings rules:
 - Amounts:
   - Dot decimal only; commas and thousands separators are invalid.
   - Allow digits with optional decimal part of 0-2 digits.
-  - Convert with Decimal, quantize to 2 decimals, and multiply by 100 to `amount_cents`.
-  - Reject inputs with more than two decimals.
+  - Reject inputs with more than two decimals before quantize.
+  - Convert with Decimal, quantize to 2 decimals (padding only), and multiply by 100 to `amount_cents`.
   - Reject signed amounts (no leading + or -).
 
 ## CSV Import
@@ -116,6 +118,7 @@ Settings rules:
 - No escaping is supported; tag names cannot contain commas.
 - Validation occurs for all rows first; insert runs inside a single transaction.
 - If any row is invalid, the import aborts without partial inserts.
+- Validate dates with `datetime.date.fromisoformat()` before insert.
 
 ## CSV Export
 - Date field selector: `date_payment` or `date_application` (default `date_application`).
@@ -203,6 +206,7 @@ UI rendering:
 - Suggested tests:
   - Schema invariants: payer/payee CHECK constraints and tag cascade deletes.
   - Amount parsing: valid dot-decimal; reject commas and >2 decimals.
+  - Date validation: invalid calendar dates are rejected before insert.
   - Date auto-copy: one date provided populates the other.
   - CSV import/export round-trip with tags.
   - Export date field selector and default behavior.
