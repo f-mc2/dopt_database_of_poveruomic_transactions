@@ -1,13 +1,17 @@
 from pathlib import Path
 import sqlite3
+from typing import Optional
 
 import streamlit as st
 
 from src import db, settings
 
 
-def ensure_db_session_state() -> None:
-    settings_conn = settings.connect_settings_db()
+def ensure_db_session_state(settings_conn: Optional[sqlite3.Connection] = None) -> None:
+    close_conn = False
+    if settings_conn is None:
+        settings_conn = settings.connect_settings_db()
+        close_conn = True
     app_settings = settings.get_app_settings(settings_conn)
 
     if "db_path" not in st.session_state:
@@ -18,6 +22,22 @@ def ensure_db_session_state() -> None:
         st.session_state.db_ready = False
     if "db_auto_open_attempted" not in st.session_state:
         st.session_state.db_auto_open_attempted = False
+    if "db_auto_open_error" not in st.session_state:
+        st.session_state.db_auto_open_error = None
+    if "theme" not in st.session_state:
+        st.session_state.theme = app_settings.get("theme") or "light"
+    if "csv_import_dir" not in st.session_state:
+        st.session_state.csv_import_dir = settings.resolve_setting(
+            app_settings.get("csv_import_dir"), settings.DEFAULT_IMPORT_DIR
+        )
+    if "csv_export_dir" not in st.session_state:
+        st.session_state.csv_export_dir = settings.resolve_setting(
+            app_settings.get("csv_export_dir"), settings.DEFAULT_EXPORT_DIR
+        )
+    if "db_backup_dir" not in st.session_state:
+        st.session_state.db_backup_dir = settings.resolve_setting(
+            app_settings.get("db_backup_dir"), settings.DEFAULT_BACKUP_DIR
+        )
 
     if not st.session_state.db_ready and not st.session_state.db_auto_open_attempted:
         st.session_state.db_auto_open_attempted = True
@@ -31,10 +51,17 @@ def ensure_db_session_state() -> None:
                         settings_conn, last_used_db_path=str(current_path)
                     )
                     settings.record_recent_db_path(settings_conn, str(current_path))
-            except sqlite3.Error:
+                    st.session_state.db_auto_open_error = None
+                else:
+                    st.session_state.db_auto_open_error = (
+                        "Saved database path has an invalid schema."
+                    )
+            except sqlite3.Error as exc:
                 st.session_state.db_ready = False
+                st.session_state.db_auto_open_error = f"Auto-open failed: {exc}"
             finally:
                 if "conn" in locals():
                     conn.close()
 
-    settings_conn.close()
+    if close_conn:
+        settings_conn.close()

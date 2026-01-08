@@ -4,7 +4,7 @@ import sqlite3
 
 import streamlit as st
 
-from src import db, settings
+from src import db, session_state, settings
 
 st.set_page_config(
     page_title="Database of Poveruomic Transactions",
@@ -84,35 +84,15 @@ def _ensure_parent_dir(path: Path) -> bool:
 st.title("Home")
 
 settings_conn = settings.connect_settings_db()
-app_settings = settings.get_app_settings(settings_conn)
+session_state.ensure_db_session_state(settings_conn)
 recent_paths = settings.get_recent_db_paths(settings_conn)
-
-if "theme" not in st.session_state:
-    st.session_state.theme = app_settings.get("theme") or "light"
-if "db_path" not in st.session_state:
-    st.session_state.db_path = (
-        app_settings.get("last_used_db_path") or settings.DEFAULT_DB_PATH
-    )
-if "db_ready" not in st.session_state:
-    st.session_state.db_ready = False
-if "db_auto_open_attempted" not in st.session_state:
-    st.session_state.db_auto_open_attempted = False
-if "csv_import_dir" not in st.session_state:
-    st.session_state.csv_import_dir = settings.resolve_setting(
-        app_settings.get("csv_import_dir"), settings.DEFAULT_IMPORT_DIR
-    )
-if "csv_export_dir" not in st.session_state:
-    st.session_state.csv_export_dir = settings.resolve_setting(
-        app_settings.get("csv_export_dir"), settings.DEFAULT_EXPORT_DIR
-    )
-if "db_backup_dir" not in st.session_state:
-    st.session_state.db_backup_dir = settings.resolve_setting(
-        app_settings.get("db_backup_dir"), settings.DEFAULT_BACKUP_DIR
-    )
 
 _apply_theme(st.session_state.theme)
 
 st.subheader("Database selection")
+if st.session_state.get("db_auto_open_error"):
+    st.warning(st.session_state.db_auto_open_error)
+    st.session_state.db_auto_open_error = None
 
 recent_choice = st.selectbox(
     "Recent databases",
@@ -168,29 +148,6 @@ else:
             f"Parent directory does not exist: {current_path.parent}. "
             "It will be created for local data paths when creating a new database."
         )
-
-    if (
-        not st.session_state.db_ready
-        and not st.session_state.db_auto_open_attempted
-        and current_path.exists()
-        and parent_ok
-    ):
-        st.session_state.db_auto_open_attempted = True
-        try:
-            conn = db.connect(str(current_path))
-            if db.schema_is_valid(conn):
-                st.session_state.db_ready = True
-                settings.update_app_settings(
-                    settings_conn, last_used_db_path=str(current_path)
-                )
-                settings.record_recent_db_path(settings_conn, str(current_path))
-            else:
-                st.warning("Saved database path has an invalid schema.")
-        except sqlite3.Error as exc:
-            st.warning(f"Auto-open failed: {exc}")
-        finally:
-            if "conn" in locals():
-                conn.close()
 
     if current_path.exists() and parent_ok:
         if st.button("Open existing database"):
