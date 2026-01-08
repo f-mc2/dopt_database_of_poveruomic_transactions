@@ -10,6 +10,7 @@ It covers both the finance database and the app settings database.
 - Settings DB paths are stored verbatim (case-preserving).
 - Empty strings become NULL for nullable fields.
 - Dates use ISO format YYYY-MM-DD.
+- DB enforces ISO shape and basic ranges; full calendar validity is enforced in application code.
 - Amounts are stored as integer cents (non-negative; 0 allowed).
 - Amount inputs accept 0-2 fractional digits and are normalized to cents.
 - Amount inputs must be non-negative (no leading + or -).
@@ -29,11 +30,11 @@ Core transaction records. Amount always flows from payer to payee.
 - date_payment
   - Type: TEXT NOT NULL
   - Meaning: date the payment was made
-  - Validation: YYYY-MM-DD; required; DB enforces ISO format and valid dates via CHECK
+  - Validation: YYYY-MM-DD; required; DB enforces ISO shape/basic ranges; app validates calendar date
 - date_application
   - Type: TEXT NOT NULL
   - Meaning: date the payment was applied/posted
-  - Validation: YYYY-MM-DD; required; DB enforces ISO format and valid dates via CHECK
+  - Validation: YYYY-MM-DD; required; DB enforces ISO shape/basic ranges; app validates calendar date
 - amount_cents
   - Type: INTEGER NOT NULL
   - Meaning: absolute amount in cents (no sign)
@@ -49,7 +50,7 @@ Core transaction records. Amount always flows from payer to payee.
 - category
   - Type: TEXT NOT NULL
   - Meaning: primary category
-  - Validation: trimmed, lowercase; required
+  - Validation: trimmed, lowercase; required; non-empty after trim
 - subcategory
   - Type: TEXT NULL
   - Meaning: optional subcategory scoped to the category; the semantic key is (category, subcategory)
@@ -72,7 +73,8 @@ Normalized tag list.
 - name
   - Type: TEXT NOT NULL UNIQUE
   - Meaning: tag name
-  - Validation: trimmed, lowercase; unique; cannot contain commas (DB CHECK constraint)
+  - Validation: trimmed, lowercase; non-empty; unique; cannot contain commas (DB CHECK constraint)
+  - Note: commas are forbidden because CSV tags use commas as separators; no escaping supported
 
 ### transaction_tags
 Many-to-many join between transactions and tags.
