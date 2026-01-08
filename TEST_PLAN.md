@@ -86,7 +86,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
 
 ### PRAGMA
 - `PRAGMA foreign_keys` returns `1` after connection.
-- File-backed DB uses `journal_mode=wal`.
+- File-backed DB uses `journal_mode=wal` (skip WAL assertion for `:memory:` DBs).
 
 ### Manage Values
 - Preflight blocks:
@@ -101,7 +101,10 @@ No tests may read from `./data/` or any real user databases/CSVs.
 - AND vs OR slice modes.
 - All categories/tags nodes behave as totals.
 - `#tx (inflow ∪ outflow)` semantics in role mode.
-- Use a canonical fixture to assert tx_count, inflow, outflow, net, matched_flow explicitly.
+- Use a canonical fixture (8-10 transactions) that includes unmatched inflow, unmatched outflow,
+  matched flow, overlapping A/B sets, tagged vs untagged, TagMatch ANY vs ALL differences, and
+  at least 2 nodes (one category slice, one tag node, plus All Categories).
+  Assert tx_count, inflow, outflow, net, matched_flow explicitly.
 
 ### Backup
 - Use sqlite backup API to write a snapshot to `./.tmp_test/`.
