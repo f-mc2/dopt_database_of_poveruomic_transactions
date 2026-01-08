@@ -26,8 +26,8 @@ Single text input with suggestion list. User can pick an existing value or type 
 - Use for: transaction entry fields (payer, payee, category, subcategory, payment_type) and tag creation.
 
 ### P2 Select-Existing-Only
-Typeahead search + selectbox over filtered existing values (no creation).
-- UI: text_input for search, then selectbox of filtered values.
+Select existing values only (no creation).
+- UI: selectbox or multiselect with built-in search.
 - Use for: filters, comparison selectors, manage-values selectors.
 
 ### P3a Tags Assign
@@ -37,7 +37,7 @@ Assign tags to a transaction with the option to add new tags.
 
 ### P3b Tags Filter
 Filter by tags from existing values only.
-- UI: multiselect with search/filter.
+- UI: multiselect (built-in search).
 - No new tag creation.
 
 ## Pages
