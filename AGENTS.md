@@ -1,220 +1,170 @@
-# AGENTS.md — Codex build instructions (Streamlit + SQLite Finance MVP)
+# AGENTS.md — Codex guardrails (Streamlit + SQLite Finance MVP)
 
-This repository is developed with the **Codex VS Code extension** (side-panel agent).
-These rules exist to prevent data loss, privacy leaks, and “helpful” mistakes.
+This repo is developed with the Codex VS Code extension. These rules prevent data loss,
+privacy leaks, and unintended scope creep.
 
----
+## 0) Phase rule (spec-first)
+- Until the user explicitly approves `PRD.md`, only documentation changes are allowed.
+- During the spec-only phase, commits must use the `docs:` prefix.
 
 ## 1) Scope and workspace boundaries (hard rules)
 
 ### Repo-only file operations
-- The agent must **only** create/modify files **inside the current VS Code workspace folder** (the repo root and its subfolders).
-- The agent must **never** create, modify, move, or delete files outside the repo (e.g., `~/.config`, `~/Downloads`, sibling folders, absolute system paths).
-
-If an action would require touching anything outside the repo:
-- Stop and explain what the user should do manually (with explicit file paths/commands),
-- or propose a repo-internal alternative.
+- Only create/modify files inside the repo workspace.
+- Never touch files outside the repo (no absolute paths, no sibling dirs).
 
 ### Forbidden internal paths (never edit directly)
-The agent must not edit, delete, or “clean up”:
 - `.git/`
 - `.venv/` (or any virtual environment folder)
 - cache/state folders (`__pycache__/`, `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, etc.)
 
-Note: running Python tools may create cache folders; the agent must simply not edit/commit them.
-
----
+Running tools may create caches; do not edit/commit them.
 
 ## 2) Personal data and runtime artifacts (privacy + safety)
 
-### Sensitive runtime directory: `data/` (host-side)
-This repo uses a host directory `data/` (gitignored) that contains real personal data:
+### Sensitive runtime directory: `data/` (host-side, gitignored)
+Contains real personal data:
 - `data/finance.db` and SQLite sidecars
 - `data/csv_import/`
 - `data/csv_export/`
 - `data/db_backup/`
+- `data/app_settings.db`
 
-**Hard rule:** the agent must never read, print, open, parse, or upload any personal files from `data/`.
+Hard rules:
+- Never read, print, open, parse, or upload anything under `data/`.
+- Never read/write/open any `*.db`, `*.db-wal`, `*.db-shm` under `data/`.
+- Never read/print CSVs or backups under `data/`.
 
-#### Database files are untouchable
-The agent must never read/write/open/print/copy:
-- any `*.db`, `*.db-wal`, `*.db-shm` under `data/`
-- any `finance.db` anywhere in the repo
-
-If a task involves schema/migrations:
-- operate only on schema scripts and application code
-- use an **in-memory** SQLite DB (`:memory:`) or a synthetic temporary DB in `./.tmp_test/` for tests
-
-#### CSV imports/exports/backups are untouchable
-The agent must never read/print any personal transaction exports/imports/backups:
-- any `*.csv`, `*.xlsx`, `*.json` under `data/`
-- any files under `data/csv_import/`, `data/csv_export/`, `data/db_backup/`
-
-#### Exception: synthetic test data is allowed
-The agent may create and use **synthetic** datasets for testing only under:
-- `tests/fixtures/` (small, fake data with no personal content)
-- `./.tmp_test/` (temporary test DBs/files created by tests; should be gitignored)
-
-### Do not echo personal data into chat
-Even if asked for debugging:
-- do not paste real transaction rows, real CSV contents, or DB contents into chat.
-- demonstrate behavior with synthetic examples only.
-
----
+### Synthetic test data only
+Allowed locations for synthetic data:
+- `tests/fixtures/`
+- `./.tmp_test/` (gitignored)
+- In-memory SQLite (`:memory:`) for non-WAL tests
 
 ## 3) Command execution policy
 
-The agent should behave conservatively: code changes first, execution second.
-
-### Allowed commands (generally safe)
-The agent may run these if needed for verification:
+### Allowed commands (safe)
 - `pytest` / `python -m pytest`
-- `ruff`, `black`, `mypy` only if they are already configured in the repo
+- `ruff`, `black`, `mypy` only if already configured
 
-### Commands requiring explicit user approval
-The agent must ask before:
-- running Docker builds/containers (`docker`, `docker compose`)
-- running any command that would open or migrate a real DB under `data/`
-- running scripts that generate or move files in bulk
+### Requires explicit user approval
+- Docker builds/containers (`docker`, `docker compose`)
+- Any command touching real DBs under `data/`
+- Bulk file generators/movers
 
 ### Never run destructive commands
-Do not run:
-- `rm -rf`, cleanup scripts, global package installs
-- anything that modifies system config, SSH keys, or user directories
-
----
+- `rm -rf`, cleanup scripts, global installs
+- Anything that modifies system config, SSH keys, or user directories
 
 ## 4) Mission
-Implement the MVP described in PRD.md as a modular, readable Streamlit app backed by SQLite.
+Implement the MVP described in `PRD.md` as a modular, readable Streamlit app backed by SQLite.
 
 Priority order:
-1) Correctness + consistency with PRD.md
-2) Simplicity + readability (no “framework inside the framework”)
-3) UI polish (last)
+1) Correctness + consistency with `PRD.md`
+2) Simplicity + readability
+3) UI polish
 
-Do not invent new features.
-
----
+Do not invent features.
 
 ## 5) Hard constraints (non-negotiable)
-- Use Streamlit multipage UI.
-- Use SQLite via Python `sqlite3` module.
-- No saved/persistent presets beyond what is stored in the database.
-- Edit/delete transactions **one at a time** (no bulk edit).
-- All SQL must use parameter placeholders only (`?`), never string formatting.
-- Use WAL mode + foreign keys:
+- Streamlit multipage UI.
+- SQLite via Python `sqlite3` module.
+- No saved analytics presets or reports beyond DB content (settings DB allowed for UI config).
+- Edit/delete transactions one at a time (no bulk transaction edits).
+- All SQL uses parameter placeholders (`?`), never string formatting.
+- Use WAL + foreign keys:
   - `PRAGMA journal_mode=WAL;`
   - `PRAGMA foreign_keys=ON;`
 - Store currency as integer cents:
-  - DB column is `amount_cents INTEGER NOT NULL`
-  - derived from CSV `amount` with proper decimal parsing/rounding
-- Tags must be **normalized**:
-  - `tags(id, name UNIQUE)`
+  - `amount_cents INTEGER NOT NULL`, non-negative
+  - UI/CSV amounts parsed to cents, 0-2 decimals, no signs, no commas
+- Finance-domain text fields must already be normalized (lower(trim())); DB rejects non-normalized.
+- Notes preserve case; empty/whitespace-only values are invalid if not NULL.
+- Tags normalized and comma-free:
+  - `tags(id, name UNIQUE)` with CHECKs for lower(trim()), non-empty, no commas
   - `transaction_tags(transaction_id, tag_id)` with PK(transaction_id, tag_id)
-- Comparison engine must be UI-agnostic (no Streamlit imports).
-
----
+- Comparison engine is UI-agnostic (no Streamlit imports).
 
 ## 6) Repo structure (recommended)
 Keep files small (<250–300 LOC each).
 
 - `app.py`
 - `src/`
-  - `db.py`                (connect, PRAGMA, schema init, backup)
-  - `schema.sql`           (authoritative schema)
+  - `db.py`                (connect, PRAGMA, schema init, backup, settings DB)
+  - `schema.sql`           (authoritative finance DB schema)
   - `types.py`             (Period/Group/Node dataclasses)
-  - `csv_io.py`            (parse/validate CSV, import/export helpers)
-  - `tags.py`              (tag upsert, set tags on tx, tag queries)
+  - `amounts.py`           (parse/format amounts)
+  - `csv_io.py`            (CSV import/export helpers)
+  - `tags.py`              (tag upsert, tag assignment, tag queries)
   - `queries.py`           (SQL query builders, WHERE utilities)
-  - `comparison_engine.py` (compute cube results; returns dataframe)
-  - `plotting.py`          (Altair charts for comparison page)
-  - `ui_widgets.py`        (typeahead/select helpers)
+  - `comparison_engine.py` (comparison logic; returns dataframe)
+  - `plotting.py`          (Altair charts for compare page)
+  - `ui_widgets.py`        (P1/P2/P3 helpers)
 - `pages/`
   - `1_Home.py`
   - `2_Transactions.py`
-  - `3_Import_Export.py`
+  - `3_Import_Export.py`   (includes Backup)
   - `4_Manage_Values.py`
   - `5_Compare.py`
-  - `6_Backup.py`
 - `requirements.txt`
 - `Dockerfile`
 - `docker-compose.yml`
-- `.gitignore` (must ignore `data/`, `*.db*`, `.tmp_test/`)
-
----
+- `.gitignore` must ignore `data/`, `*.db*`, `.tmp_test/`
 
 ## 7) Configuration (host vs Docker)
-Host-side repo uses `data/` (gitignored) with:
+Host-side repo uses `data/` (gitignored):
 - `data/finance.db`
 - `data/csv_import/`
 - `data/csv_export/`
 - `data/db_backup/`
+- `data/app_settings.db`
 
-Docker convention (inside container) may mount host `./data` to container `/data`.
+Container convention: mount `./data` to `/data`.
 
-Support env defaults:
+Environment defaults:
 - `FINANCE_DB_PATH` default `/data/finance.db`
 - `FINANCE_CSV_IMPORT_DIR` default `/data/csv_import`
 - `FINANCE_CSV_EXPORT_DIR` default `/data/csv_export`
 - `FINANCE_DB_BACKUP_DIR` default `/data/db_backup`
 
-UI allows overriding per session (store in `st.session_state`).
-
----
+Settings DB (`/data/app_settings.db`) persists:
+- last-used DB
+- recent DBs (max 3)
+- theme (light/dark)
+- import/export/backup dirs (editable in UI)
 
 ## 8) UI behavior requirements
-- Prefer selecting from existing DB values.
-- Provide “Add new …” options where appropriate.
-- Confirm destructive operations (delete transaction, delete value, delete tag, backups).
-
-### “Fuzzy search” selectors (MVP)
-Implement typeahead pattern:
-1) `st.text_input("Search …")`
-2) filter list by substring (case-insensitive)
-3) `st.selectbox` over filtered list
-
----
+- Follow `UI_BLUEPRINT.md` for patterns and page behavior.
+- Prefer existing DB values; creation only in explicit contexts.
+- Confirm destructive operations.
+- Transactions list supports column hide/show and ordering; date filter uses `date_application`.
 
 ## 9) CSV import/export
 Import:
-- semicolon-separated
-- required: `date` (YYYY-MM-DD), `amount`, `category`
-- optional: payer, payee, subcategory, notes, tags
-- normalize: trim; empty→NULL; lowercase category/subcategory/tags
-- tags split by comma `,`, trim/lowercase/dedupe
-- validate strictly; abort on any invalid row; insert in one transaction
+- Semicolon-separated CSV with headers trimmed and case-insensitive.
+- Required columns: `amount`, `category`, at least one of `date_payment`/`date_application`,
+  and at least one of `payer`/`payee`.
+- Amounts: dot decimal only; 0-2 fractional digits; no commas, no signs.
+- Tags: comma-separated; no escaping; tag names cannot contain commas.
+- Normalize inputs; empty/whitespace-only -> NULL for nullable fields.
+- Validate all rows; insert in a single transaction; abort on any invalid row.
 
 Export:
-- date range required; optional payer/payee/category/subcategory/tags filters
-- include `tags` column reconstructed from join tables
-- Streamlit download; optionally save to `FINANCE_CSV_EXPORT_DIR`
+- Date range required; date-field selector (`date_application` default).
+- Optional filters for payer/payee/category/subcategory/payment_type/tags.
+- Tags filter uses ANY semantics; untagged tx excluded if tags selected.
+- Include both date columns and a `tags` column.
 
----
+## 10) Comparison logic
+Implement exactly as specified in `PRD.md` (periods, groups, role vs matched-only,
+slice modes, TagMatch ANY/ALL, node outputs).
 
-## 10) Comparison logic (implement exactly)
-(Keep as specified in PRD.md: periods/groups, role vs matched_only, AND/OR node selection, TagMatch ANY/ALL in AND mode, output dataframe, grouped-bar plots.)
+## 11) Testing policy
+- Use synthetic data only (`tests/fixtures`, `./.tmp_test/`, or `:memory:`).
+- Use file-backed DBs under `./.tmp_test/` for WAL/backup tests.
+- Never open or read any DB/CSV under `data/`.
 
----
-
-## 11) Implementation plan (commit early, commit often)
-Commit to `main` frequently. Each commit must leave the app runnable.
-
-Allowed prefixes:
-- `chore:`, `feat:`, `fix:`, `refactor:`, `analytics:`, `docs:`, `test:`
-
-Never commit personal data. `.gitignore` must exclude:
-- `data/`
-- `*.db`, `*.db-wal`, `*.db-shm`
-- `.tmp_test/`
-
-If any personal files are already tracked, do **not** rewrite git history automatically; explain remediation steps.
-
----
-
-## 12) Quality checks
-- Use synthetic data for tests only.
-- Create/open a fresh test DB (in-memory or `.tmp_test/`) and verify:
-  - CRUD + tags
-  - CSV import/export on synthetic CSV
-  - backup code path (to a synthetic target path)
-  - comparison logic outputs and plots
+## 12) Commits
+- Commit early, commit often.
+- Allowed prefixes: `chore:`, `feat:`, `fix:`, `refactor:`, `analytics:`, `docs:`, `test:`
+- During spec-only phase: `docs:` commits only.
