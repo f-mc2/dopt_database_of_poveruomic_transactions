@@ -113,6 +113,7 @@ Purpose: bulk rename/merge and cleanup of reference values.
 - Deleting payer or payee values is blocked if it would make any transaction have both NULL
   (show count of blocking transactions).
 - Renames/merges are blocked if they would make payer == payee (show count of conflicts).
+- Rename targets are validated (non-empty after trim; tags cannot contain commas).
 - Renames/merges require confirmation because they are destructive.
 
 ### Compare
