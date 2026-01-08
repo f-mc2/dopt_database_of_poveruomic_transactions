@@ -68,14 +68,13 @@ def select_existing(
 
 
 def multiselect_existing(label: str, options: Iterable[str], key: str) -> List[str]:
-    search = st.text_input(f"Search {label}", key=f"{key}_search")
-    filtered = _filter_options(options, search)
     selected = st.session_state.get(key, [])
+    option_list = list(options)
     if selected:
         for item in selected:
-            if item not in filtered:
-                filtered.append(item)
-    return st.multiselect(label, options=filtered, default=selected, key=key)
+            if item not in option_list:
+                option_list.append(item)
+    return st.multiselect(label, options=option_list, default=selected, key=key)
 
 
 def tags_assign(label: str, options: Iterable[str], key: str) -> Tuple[List[str], str]:
