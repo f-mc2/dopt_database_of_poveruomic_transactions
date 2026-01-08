@@ -22,6 +22,7 @@ Single text input with suggestion list. User can pick an existing value or type 
 - UI: text_input + filtered suggestions list.
 - Behavior: creation happens only on form submit; show a "will create new value" preview if the input
   does not match an existing value.
+- Input is normalized (trim + lowercase) before comparison and preview.
 - Use for: transaction entry fields (payer, payee, category, subcategory, payment_type) and tag creation.
 
 ### P2 Select-Existing-Only
