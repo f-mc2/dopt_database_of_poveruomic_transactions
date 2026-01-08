@@ -10,7 +10,7 @@ It covers both the finance database and the app settings database.
 - Settings DB paths are stored verbatim (case-preserving).
 - Empty strings become NULL for nullable fields.
 - Dates use ISO format YYYY-MM-DD.
-- DB enforces ISO shape; full calendar validity is enforced in application code.
+- DB enforces ISO shape and non-null parseability; full calendar validity is enforced in application code.
 - Amounts are stored as integer cents (non-negative; 0 allowed).
 - Amount inputs accept 0-2 fractional digits and are normalized to cents.
 - Amount inputs must be non-negative (no leading + or -).
@@ -30,11 +30,11 @@ Core transaction records. Amount always flows from payer to payee.
 - date_payment
   - Type: TEXT NOT NULL
   - Meaning: date the payment was made
-  - Validation: YYYY-MM-DD; required; DB enforces ISO shape; app validates calendar date
+  - Validation: YYYY-MM-DD; required; DB enforces ISO shape/parseability; app validates calendar date
 - date_application
   - Type: TEXT NOT NULL
   - Meaning: date the payment was applied/posted
-  - Validation: YYYY-MM-DD; required; DB enforces ISO shape; app validates calendar date
+  - Validation: YYYY-MM-DD; required; DB enforces ISO shape/parseability; app validates calendar date
 - amount_cents
   - Type: INTEGER NOT NULL
   - Meaning: absolute amount in cents (no sign)
