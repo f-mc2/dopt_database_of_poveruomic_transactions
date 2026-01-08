@@ -123,6 +123,7 @@ Settings rules:
   - `category`
   - at least one of `date_payment` / `date_application`
   - at least one of `payer` / `payee`
+- CSV headers are trimmed and case-insensitive; duplicates after normalization are invalid.
 - Optional columns: `payer`, `payee`, `subcategory`, `payment_type`, `notes`, `tags`.
 - `tags` column is comma-separated; trim, lowercase, dedupe, drop empties.
 - No escaping is supported; tag names cannot contain commas.
