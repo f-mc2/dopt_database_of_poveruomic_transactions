@@ -52,8 +52,6 @@ try:
         key="tx_search",
         placeholder="payer, payee, category, subcategory, tags, notes",
     )
-    table_container = st.container()
-
     all_columns = [
         "id",
         "date_payment",
@@ -67,9 +65,13 @@ try:
         "tags",
         "notes",
     ]
-    if "tx_visible_columns" not in st.session_state:
-        st.session_state["tx_visible_columns"] = list(all_columns)
-    visible_columns = st.session_state.get("tx_visible_columns", all_columns)
+    visible_columns = st.multiselect(
+        "Visible columns",
+        options=all_columns,
+        default=all_columns,
+        key="tx_visible_columns",
+    )
+    table_container = st.container()
 
     date_field = "date_application"
     min_date, max_date = queries.get_date_bounds(conn, date_field)
@@ -187,15 +189,10 @@ try:
             df = pd.DataFrame(display_rows)
             if ordered_columns:
                 df = df[ordered_columns]
-            st.dataframe(df, width="stretch", height=520)
+            display_columns = ordered_columns or list(df.columns)
+            table_width = max(900, len(display_columns) * 140)
+            st.dataframe(df, width=table_width, height=520)
             st.caption("Default order is date_application desc; click column headers to sort.")
-
-    st.multiselect(
-        "Visible columns",
-        options=all_columns,
-        default=all_columns,
-        key="tx_visible_columns",
-    )
 
     st.divider()
     st.subheader("Add transaction")
