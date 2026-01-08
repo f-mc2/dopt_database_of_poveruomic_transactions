@@ -57,11 +57,13 @@ Purpose: quick orientation and app status.
 ### Transactions
 Purpose: view and maintain transactions.
 - Filters (P2/P3b): date range, payer, payee, category, subcategory, payment_type, tags.
+- Date range filter applies to date_application (no selector in MVP).
 - Missing-value toggles: include missing payer, payee, or payment_type.
 - Subcategory choices are filtered by the selected category.
 - If any tags are selected, untagged transactions are excluded.
 - Multiple selected tags use ANY semantics (match any selected tag).
-- List view: table of transactions with pagination or "show N latest".
+- List view: scrollable table with all fields as columns; allow column hide/show and
+  ordering by a selected column (ascending/descending).
 - Add transaction (form):
   - Fields: date_payment, date_application, amount, payer, payee, category, subcategory,
     payment_type, notes, tags.
