@@ -13,7 +13,8 @@ st.set_page_config(
     layout="wide",
 )
 
-SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
+REPO_ROOT = Path(__file__).resolve().parent
+SCHEMA_PATH = REPO_ROOT / "schema.sql"
 
 
 def _apply_theme(theme: str) -> None:
@@ -65,6 +66,19 @@ def _reset_session_state(
     st.session_state.csv_export_dir = export_dir
     st.session_state.db_backup_dir = backup_dir
     st.session_state.db_switch_notice = True
+
+
+def _ensure_parent_dir(path: Path) -> bool:
+    parent = path.parent
+    if parent.exists():
+        return True
+    try:
+        if parent.resolve().is_relative_to(REPO_ROOT):
+            parent.mkdir(parents=True, exist_ok=True)
+            return True
+    except (OSError, RuntimeError):
+        return False
+    return False
 
 
 st.title("Home")
@@ -150,7 +164,10 @@ if current_path.exists() and current_path.is_dir():
 else:
     parent_ok = current_path.parent.exists()
     if not parent_ok:
-        st.error(f"Parent directory does not exist: {current_path.parent}")
+        st.warning(
+            f"Parent directory does not exist: {current_path.parent}. "
+            "It will be created for local data paths when creating a new database."
+        )
 
     if (
         not st.session_state.db_ready
@@ -195,23 +212,26 @@ else:
             finally:
                 if "conn" in locals():
                     conn.close()
-    elif parent_ok:
+    else:
         if st.button("Create database and schema"):
-            try:
-                conn = db.connect(str(current_path))
-                db.init_db(conn, str(SCHEMA_PATH))
-                st.session_state.db_ready = True
-                settings.update_app_settings(
-                    settings_conn, last_used_db_path=str(current_path)
-                )
-                settings.record_recent_db_path(settings_conn, str(current_path))
-                st.success("Database created and schema initialized.")
-            except sqlite3.Error as exc:
-                st.session_state.db_ready = False
-                st.error(f"Failed to create database: {exc}")
-            finally:
-                if "conn" in locals():
-                    conn.close()
+            if not _ensure_parent_dir(current_path):
+                st.error("Parent directory does not exist and could not be created.")
+            else:
+                try:
+                    conn = db.connect(str(current_path))
+                    db.init_db(conn, str(SCHEMA_PATH))
+                    st.session_state.db_ready = True
+                    settings.update_app_settings(
+                        settings_conn, last_used_db_path=str(current_path)
+                    )
+                    settings.record_recent_db_path(settings_conn, str(current_path))
+                    st.success("Database created and schema initialized.")
+                except sqlite3.Error as exc:
+                    st.session_state.db_ready = False
+                    st.error(f"Failed to create database: {exc}")
+                finally:
+                    if "conn" in locals():
+                        conn.close()
 
 st.divider()
 st.subheader("Theme")

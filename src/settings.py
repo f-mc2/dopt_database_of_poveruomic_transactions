@@ -7,10 +7,32 @@ import sqlite3
 
 from src import db
 
-DEFAULT_DB_PATH = os.environ.get("FINANCE_DB_PATH", "/data/finance.db")
-DEFAULT_IMPORT_DIR = os.environ.get("FINANCE_CSV_IMPORT_DIR", "/data/csv_import")
-DEFAULT_EXPORT_DIR = os.environ.get("FINANCE_CSV_EXPORT_DIR", "/data/csv_export")
-DEFAULT_BACKUP_DIR = os.environ.get("FINANCE_DB_BACKUP_DIR", "/data/db_backup")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_DATA_DIR = REPO_ROOT / "data"
+
+
+def _default_db_path() -> str:
+    env_path = os.environ.get("FINANCE_DB_PATH")
+    if env_path:
+        return env_path
+    if Path("/data").exists():
+        return "/data/finance.db"
+    return str(REPO_DATA_DIR / "finance.db")
+
+
+DEFAULT_DB_PATH = _default_db_path()
+def _default_dir(env_name: str, subdir: str) -> str:
+    env_path = os.environ.get(env_name)
+    if env_path:
+        return env_path
+    if Path("/data").exists():
+        return f"/data/{subdir}"
+    return str(REPO_DATA_DIR / subdir)
+
+
+DEFAULT_IMPORT_DIR = _default_dir("FINANCE_CSV_IMPORT_DIR", "csv_import")
+DEFAULT_EXPORT_DIR = _default_dir("FINANCE_CSV_EXPORT_DIR", "csv_export")
+DEFAULT_BACKUP_DIR = _default_dir("FINANCE_DB_BACKUP_DIR", "db_backup")
 
 
 def settings_db_path() -> str:
@@ -19,7 +41,9 @@ def settings_db_path() -> str:
 
 
 def connect_settings_db() -> sqlite3.Connection:
-    conn = db.connect(settings_db_path())
+    path = Path(settings_db_path()).expanduser()
+    _ensure_parent_dir(path)
+    conn = db.connect(str(path))
     db.init_settings_db(conn)
     return conn
 
@@ -102,3 +126,14 @@ def record_recent_db_path(conn: sqlite3.Connection, path: str, limit: int = 3) -
 def resolve_setting(value: Optional[str], default: str) -> str:
     cleaned = (value or "").strip()
     return cleaned if cleaned else default
+
+
+def _ensure_parent_dir(path: Path) -> None:
+    parent = path.parent
+    if parent.exists():
+        return
+    try:
+        if parent.resolve().is_relative_to(REPO_ROOT):
+            parent.mkdir(parents=True, exist_ok=True)
+    except (OSError, RuntimeError):
+        return
