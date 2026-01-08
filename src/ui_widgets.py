@@ -1,66 +1,101 @@
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
 import streamlit as st
 
-_EMPTY_LABEL = "(empty)"
-_ADD_LABEL = "Add new..."
 _NO_MATCHES = "(no matches)"
+_NONE = "(none)"
 
 
-def typeahead_multi_select(label: str, options: Iterable[str], key: str) -> List[Optional[str]]:
-    state_key = f"{key}_selected"
-    if state_key not in st.session_state:
-        st.session_state[state_key] = []
+def select_or_create(
+    label: str,
+    options: Iterable[str],
+    key: str,
+    value: Optional[str] = None,
+    allow_empty: bool = True,
+) -> Tuple[Optional[str], bool]:
+    input_key = f"{key}_input"
+    if value is not None and input_key not in st.session_state:
+        st.session_state[input_key] = value
 
-    option_list = list(options)
-    search = st.text_input(f"Search {label}", key=f"{key}_search")
-    filtered = [opt for opt in option_list if search.lower() in opt.lower()]
-    display_options = filtered if filtered else [_NO_MATCHES]
+    raw_value = st.text_input(label, key=input_key)
+    normalized = _normalize_value(raw_value)
 
-    selection = st.selectbox(f"Add {label}", display_options, key=f"{key}_select")
-    if st.button(f"Add {label}", key=f"{key}_add"):
-        if selection != _NO_MATCHES and selection not in st.session_state[state_key]:
-            st.session_state[state_key].append(selection)
+    options_list = list(options)
+    normalized_options = {opt.lower() for opt in options_list}
 
-    selected: List[str] = st.session_state[state_key]
-    if selected:
-        remove_choice = st.selectbox(f"Remove {label}", selected, key=f"{key}_remove")
-        if st.button(f"Remove selected {label}", key=f"{key}_remove_btn"):
-            st.session_state[state_key] = [item for item in selected if item != remove_choice]
+    search = normalized or ""
+    suggestions = [opt for opt in options_list if search in opt.lower()]
+    if not suggestions:
+        suggestions = [_NO_MATCHES]
 
-    if st.button(f"Clear {label}", key=f"{key}_clear"):
-        st.session_state[state_key] = []
+    def _apply_suggestion() -> None:
+        selection = st.session_state.get(f"{key}_suggest")
+        if selection and selection != _NO_MATCHES:
+            st.session_state[input_key] = selection
 
-    return list(st.session_state[state_key])
+    st.selectbox(
+        f"{label} suggestions",
+        suggestions,
+        key=f"{key}_suggest",
+        on_change=_apply_suggestion,
+    )
+
+    is_new = False
+    if normalized:
+        is_new = normalized not in normalized_options
+        if is_new:
+            st.caption(f"Will create new value: {normalized}")
+
+    if not normalized:
+        return (None if allow_empty else None), False
+    return normalized, is_new
 
 
-def select_or_add(
+def select_existing(
     label: str,
     options: Iterable[str],
     key: str,
     allow_empty: bool = True,
-    current: Optional[str] = None,
 ) -> Optional[str]:
-    option_list = list(options)
-    if current and current not in option_list:
-        option_list.insert(0, current)
-    choices: List[str] = []
+    search = st.text_input(f"Search {label}", key=f"{key}_search")
+    filtered = _filter_options(options, search)
+    choices = filtered if filtered else [_NO_MATCHES]
     if allow_empty:
-        choices.append(_EMPTY_LABEL)
-    choices.extend(option_list)
-    choices.append(_ADD_LABEL)
-
-    if current is None and allow_empty:
-        index = 0
-    elif current in choices:
-        index = choices.index(current)
-    else:
-        index = 0
-
-    selection = st.selectbox(label, choices, index=index, key=key)
-    if selection == _ADD_LABEL:
-        new_value = st.text_input(f"New {label}", key=f"{key}_new")
-        return new_value.strip() or None
-    if selection == _EMPTY_LABEL:
+        choices = [_NONE] + choices
+    selection = st.selectbox(label, choices, key=key)
+    if selection in {_NO_MATCHES, _NONE}:
         return None
     return selection
+
+
+def multiselect_existing(label: str, options: Iterable[str], key: str) -> List[str]:
+    search = st.text_input(f"Search {label}", key=f"{key}_search")
+    filtered = _filter_options(options, search)
+    selected = st.session_state.get(key, [])
+    if selected:
+        for item in selected:
+            if item not in filtered:
+                filtered.append(item)
+    return st.multiselect(label, options=filtered, default=selected, key=key)
+
+
+def tags_assign(label: str, options: Iterable[str], key: str) -> Tuple[List[str], str]:
+    selected = multiselect_existing(label, options, key=f"{key}_selected")
+    new_tag = st.text_input("Add new tag", key=f"{key}_new")
+    return selected, new_tag
+
+
+def tags_filter(label: str, options: Iterable[str], key: str) -> List[str]:
+    return multiselect_existing(label, options, key=key)
+
+
+def _normalize_value(value: str) -> str:
+    return value.strip().lower()
+
+
+def _filter_options(options: Iterable[str], search: str) -> List[str]:
+    search_clean = (search or "").strip().lower()
+    options_list = list(options)
+    if not search_clean:
+        return options_list
+    return [opt for opt in options_list if search_clean in opt.lower()]

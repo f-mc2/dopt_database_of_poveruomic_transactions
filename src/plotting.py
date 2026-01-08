@@ -13,9 +13,9 @@ def grouped_bar_chart(
     value_field: str,
     period_order: List[str],
 ) -> alt.Chart:
-    subset = df[df["group"] == group_label]
+    subset = df[df["group_label"] == group_label]
     if subset.empty:
-        return alt.Chart(pd.DataFrame({"node": [], value_field: []})).mark_bar()
+        return alt.Chart(pd.DataFrame({"node_label": [], value_field: []})).mark_bar()
 
     color_scale = alt.Scale(domain=period_order, range=DEFAULT_COLORS[: len(period_order)])
 
@@ -23,13 +23,13 @@ def grouped_bar_chart(
         alt.Chart(subset)
         .mark_bar()
         .encode(
-            x=alt.X("node:N", sort=None, title=""),
-            xOffset=alt.XOffset("period:N", sort=period_order),
+            x=alt.X("node_label:N", sort=None, title=""),
+            xOffset=alt.XOffset("period_label:N", sort=period_order),
             y=alt.Y(f"{value_field}:Q", title=value_field),
-            color=alt.Color("period:N", scale=color_scale),
+            color=alt.Color("period_label:N", scale=color_scale),
             tooltip=[
-                alt.Tooltip("period:N"),
-                alt.Tooltip("node:N"),
+                alt.Tooltip("period_label:N"),
+                alt.Tooltip("node_label:N"),
                 alt.Tooltip(f"{value_field}:Q"),
                 alt.Tooltip("tx_count:Q"),
             ],

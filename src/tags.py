@@ -5,22 +5,28 @@ from src import db
 
 
 def normalize_tag(name: str) -> str:
-    return name.strip().lower()
+    cleaned = name.strip().lower()
+    if not cleaned:
+        raise ValueError("Tag name cannot be empty")
+    if "," in cleaned:
+        raise ValueError("Tag names cannot contain commas")
+    return cleaned
 
 
 def parse_tags(raw: str) -> List[str]:
     if raw is None:
         return []
-    parts = [normalize_tag(part) for part in raw.split(",")]
+    parts = [part.strip() for part in raw.split(",")]
     deduped: List[str] = []
     seen = set()
     for part in parts:
         if not part:
             continue
-        if part in seen:
+        normalized = normalize_tag(part)
+        if normalized in seen:
             continue
-        seen.add(part)
-        deduped.append(part)
+        seen.add(normalized)
+        deduped.append(normalized)
     return deduped
 
 
@@ -46,13 +52,29 @@ def tag_counts(conn: sqlite3.Connection) -> List[Tuple[str, int]]:
 def rename_tag(conn: sqlite3.Connection, old_name: str, new_name: str) -> None:
     normalized_old = normalize_tag(old_name)
     normalized_new = normalize_tag(new_name)
-    if not normalized_new:
-        raise ValueError("Tag name cannot be empty")
+    if normalized_old == normalized_new:
+        return
+    old_row = db.fetch_one(conn, "SELECT id FROM tags WHERE name = ?", (normalized_old,))
+    if old_row is None:
+        raise ValueError("Tag not found")
+    new_row = db.fetch_one(conn, "SELECT id FROM tags WHERE name = ?", (normalized_new,))
+    if new_row is None:
+        db.execute(
+            conn,
+            "UPDATE tags SET name = ? WHERE id = ?",
+            (normalized_new, int(old_row["id"])),
+        )
+        return
+    old_id = int(old_row["id"])
+    new_id = int(new_row["id"])
+    if old_id == new_id:
+        return
     db.execute(
         conn,
-        "UPDATE tags SET name = ? WHERE name = ?",
-        (normalized_new, normalized_old),
+        "UPDATE OR IGNORE transaction_tags SET tag_id = ? WHERE tag_id = ?",
+        (new_id, old_id),
     )
+    db.execute(conn, "DELETE FROM tags WHERE id = ?", (old_id,))
 
 
 def delete_tag(conn: sqlite3.Connection, name: str) -> None:
@@ -62,8 +84,6 @@ def delete_tag(conn: sqlite3.Connection, name: str) -> None:
 
 def upsert_tag(conn: sqlite3.Connection, name: str) -> int:
     normalized = normalize_tag(name)
-    if not normalized:
-        raise ValueError("Tag name cannot be empty")
     conn.execute("INSERT OR IGNORE INTO tags(name) VALUES (?)", (normalized,))
     row = db.fetch_one(conn, "SELECT id FROM tags WHERE name = ?", (normalized,))
     if row is None:

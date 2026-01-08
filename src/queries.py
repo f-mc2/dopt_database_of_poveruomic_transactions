@@ -5,10 +5,23 @@ from src import db
 
 ALLOWED_DISTINCT_COLUMNS = {"payer", "payee", "payment_type", "category", "subcategory"}
 DATE_FIELDS = {"date_payment", "date_application"}
-DEFAULT_DATE_FIELD = "date_payment"
+DEFAULT_DATE_FIELD = "date_application"
 DATE_FIELD_LABELS = {
     "date_payment": "Payment date",
     "date_application": "Application date",
+}
+SORT_COLUMNS = {
+    "id": "t.id",
+    "date_payment": "t.date_payment",
+    "date_application": "t.date_application",
+    "amount_cents": "t.amount_cents",
+    "payer": "t.payer",
+    "payee": "t.payee",
+    "payment_type": "t.payment_type",
+    "category": "t.category",
+    "subcategory": "t.subcategory",
+    "notes": "t.notes",
+    "tags": "tags",
 }
 
 
@@ -39,22 +52,67 @@ def get_category_subcategory_pairs(conn: sqlite3.Connection) -> List[Tuple[str, 
     return [(row["category"], row["subcategory"]) for row in rows]
 
 
-def list_transactions(conn: sqlite3.Connection, filters: Dict[str, object]) -> List[sqlite3.Row]:
+def get_subcategories_for_category(conn: sqlite3.Connection, category: str) -> List[str]:
+    rows = db.fetch_all(
+        conn,
+        """
+        SELECT DISTINCT subcategory
+        FROM transactions
+        WHERE category = ? AND subcategory IS NOT NULL
+        ORDER BY subcategory
+        """,
+        (category,),
+    )
+    return [row["subcategory"] for row in rows]
+
+
+def list_transactions(
+    conn: sqlite3.Connection,
+    filters: Dict[str, object],
+    sort_by: Optional[str] = None,
+    sort_dir: str = "desc",
+    limit: Optional[int] = None,
+) -> List[sqlite3.Row]:
     where_clauses: List[str] = []
     params: List[object] = []
 
     date_field = _resolve_date_field(filters.get("date_field"))
     _apply_date_filters(date_field, filters, where_clauses, params)
-    _apply_list_filter("t.payer", filters.get("payers"), where_clauses, params)
-    _apply_list_filter("t.payee", filters.get("payees"), where_clauses, params)
+    _apply_optional_filter(
+        "t.payer",
+        filters.get("payers"),
+        bool(filters.get("include_missing_payer")),
+        where_clauses,
+        params,
+    )
+    _apply_optional_filter(
+        "t.payee",
+        filters.get("payees"),
+        bool(filters.get("include_missing_payee")),
+        where_clauses,
+        params,
+    )
+    _apply_optional_filter(
+        "t.payment_type",
+        filters.get("payment_types"),
+        bool(filters.get("include_missing_payment_type")),
+        where_clauses,
+        params,
+    )
     _apply_list_filter("t.category", filters.get("categories"), where_clauses, params)
-    _apply_list_filter("t.subcategory", filters.get("subcategories"), where_clauses, params)
+    _apply_subcategory_filter(filters.get("subcategory_pairs"), where_clauses, params)
     _apply_tag_filter(filters.get("tags"), where_clauses, params)
     _apply_search_filter(filters.get("search"), where_clauses, params)
 
     where_sql = ""
     if where_clauses:
         where_sql = "WHERE " + " AND ".join(where_clauses)
+
+    order_sql = _build_order_by(sort_by or date_field, sort_dir, date_field)
+    limit_sql = ""
+    if isinstance(limit, int) and limit > 0:
+        limit_sql = "LIMIT ?"
+        params.append(limit)
 
     sql = f"""
         SELECT
@@ -68,13 +126,20 @@ def list_transactions(conn: sqlite3.Connection, filters: Dict[str, object]) -> L
             t.category,
             t.subcategory,
             t.notes,
-            GROUP_CONCAT(tg.name, ',') AS tags
+            (
+                SELECT GROUP_CONCAT(name, ',')
+                FROM (
+                    SELECT tg.name AS name
+                    FROM tags tg
+                    JOIN transaction_tags tt ON tt.tag_id = tg.id
+                    WHERE tt.transaction_id = t.id
+                    ORDER BY tg.name
+                )
+            ) AS tags
         FROM transactions t
-        LEFT JOIN transaction_tags tt ON tt.transaction_id = t.id
-        LEFT JOIN tags tg ON tg.id = tt.tag_id
         {where_sql}
-        GROUP BY t.id
-        ORDER BY t.{date_field} DESC, t.id DESC
+        ORDER BY {order_sql}
+        {limit_sql}
     """
     return db.fetch_all(conn, sql, params)
 
@@ -239,17 +304,9 @@ def _apply_list_filter(
         selected = []
     if not selected:
         return
-    include_null = any(item is None for item in selected)
-    non_null = [item for item in selected if item is not None]
-    parts: List[str] = []
-    if non_null:
-        placeholders = ",".join("?" for _ in non_null)
-        parts.append(f"{column} IN ({placeholders})")
-        params.extend(non_null)
-    if include_null:
-        parts.append(f"{column} IS NULL")
-    if parts:
-        where_clauses.append("(" + " OR ".join(parts) + ")")
+    placeholders = ",".join("?" for _ in selected)
+    where_clauses.append(f"{column} IN ({placeholders})")
+    params.extend(selected)
 
 
 def _apply_tag_filter(values: object, where_clauses: List[str], params: List[object]) -> None:
@@ -274,6 +331,55 @@ def _apply_tag_filter(values: object, where_clauses: List[str], params: List[obj
         ")"
     )
     params.extend(selected)
+
+
+def _apply_optional_filter(
+    column: str,
+    values: object,
+    include_missing: bool,
+    where_clauses: List[str],
+    params: List[object],
+) -> None:
+    if not values:
+        return
+    if isinstance(values, str):
+        selected = [values]
+    elif isinstance(values, Iterable):
+        selected = list(values)
+    else:
+        selected = []
+    if not selected:
+        return
+    parts: List[str] = []
+    placeholders = ",".join("?" for _ in selected)
+    parts.append(f"{column} IN ({placeholders})")
+    params.extend(selected)
+    if include_missing:
+        parts.append(f"{column} IS NULL")
+    where_clauses.append("(" + " OR ".join(parts) + ")")
+
+
+def _apply_subcategory_filter(
+    pairs: object, where_clauses: List[str], params: List[object]
+) -> None:
+    if not pairs:
+        return
+    if isinstance(pairs, tuple):
+        pairs_list = [pairs]
+    elif isinstance(pairs, Iterable):
+        pairs_list = list(pairs)
+    else:
+        pairs_list = []
+    if not pairs_list:
+        return
+    parts: List[str] = []
+    for pair in pairs_list:
+        if not isinstance(pair, tuple) or len(pair) != 2:
+            continue
+        parts.append("(t.category = ? AND t.subcategory = ?)")
+        params.extend([pair[0], pair[1]])
+    if parts:
+        where_clauses.append("(" + " OR ".join(parts) + ")")
 
 
 def _apply_search_filter(search: object, where_clauses: List[str], params: List[object]) -> None:
@@ -302,3 +408,13 @@ def _apply_search_filter(search: object, where_clauses: List[str], params: List[
         """
     )
     params.extend([like, like, like, like, like, like])
+
+
+def _build_order_by(sort_by: str, sort_dir: str, fallback_date_field: str) -> str:
+    column = SORT_COLUMNS.get(sort_by)
+    if column is None:
+        column = SORT_COLUMNS.get(fallback_date_field, "t.date_application")
+    direction = "DESC" if str(sort_dir).lower() != "asc" else "ASC"
+    if column == "tags":
+        return f"{column} {direction}, t.id DESC"
+    return f"{column} {direction}, t.id DESC"

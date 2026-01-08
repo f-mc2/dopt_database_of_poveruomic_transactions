@@ -1,74 +1,141 @@
 import sqlite3
-from typing import Dict, List, Tuple
+from typing import List, Optional, Tuple
 
 from src import db
 
-VALUE_COLUMNS: Dict[str, Dict[str, object]] = {
-    "payer": {
-        "label": "Payer",
-        "lower": False,
-        "select_sql": "SELECT payer AS value, COUNT(*) AS count FROM transactions WHERE payer IS NOT NULL GROUP BY payer ORDER BY count DESC, payer",
-        "rename_sql": "UPDATE transactions SET payer = ? WHERE payer = ?",
-        "clear_sql": "UPDATE transactions SET payer = NULL WHERE payer = ?",
-    },
-    "payee": {
-        "label": "Payee",
-        "lower": False,
-        "select_sql": "SELECT payee AS value, COUNT(*) AS count FROM transactions WHERE payee IS NOT NULL GROUP BY payee ORDER BY count DESC, payee",
-        "rename_sql": "UPDATE transactions SET payee = ? WHERE payee = ?",
-        "clear_sql": "UPDATE transactions SET payee = NULL WHERE payee = ?",
-    },
-    "payment_type": {
-        "label": "Payment type",
-        "lower": True,
-        "select_sql": "SELECT payment_type AS value, COUNT(*) AS count FROM transactions WHERE payment_type IS NOT NULL GROUP BY payment_type ORDER BY count DESC, payment_type",
-        "rename_sql": "UPDATE transactions SET payment_type = ? WHERE payment_type = ?",
-        "clear_sql": "UPDATE transactions SET payment_type = NULL WHERE payment_type = ?",
-    },
-    "category": {
-        "label": "Category",
-        "lower": True,
-        "select_sql": "SELECT category AS value, COUNT(*) AS count FROM transactions WHERE category IS NOT NULL GROUP BY category ORDER BY count DESC, category",
-        "rename_sql": "UPDATE transactions SET category = ? WHERE category = ?",
-        "clear_sql": "UPDATE transactions SET category = NULL WHERE category = ?",
-    },
-    "subcategory": {
-        "label": "Subcategory",
-        "lower": True,
-        "select_sql": "SELECT subcategory AS value, COUNT(*) AS count FROM transactions WHERE subcategory IS NOT NULL GROUP BY subcategory ORDER BY count DESC, subcategory",
-        "rename_sql": "UPDATE transactions SET subcategory = ? WHERE subcategory = ?",
-        "clear_sql": "UPDATE transactions SET subcategory = NULL WHERE subcategory = ?",
-    },
-}
+
+FINANCE_COLUMNS = {"payer", "payee", "payment_type", "category", "subcategory"}
+
+
+def normalize_finance_value(value: str) -> str:
+    cleaned = value.strip().lower()
+    if not cleaned:
+        raise ValueError("Value cannot be empty")
+    return cleaned
 
 
 def list_value_counts(conn: sqlite3.Connection, column: str) -> List[Tuple[str, int]]:
-    config = VALUE_COLUMNS.get(column)
-    if config is None:
+    if column not in FINANCE_COLUMNS or column == "subcategory":
         raise ValueError(f"Unsupported column: {column}")
-    rows = db.fetch_all(conn, config["select_sql"])
+    where_clause = "WHERE {col} IS NOT NULL".format(col=column) if column != "category" else ""
+    rows = db.fetch_all(
+        conn,
+        f"""
+        SELECT {column} AS value, COUNT(*) AS count
+        FROM transactions
+        {where_clause}
+        GROUP BY {column}
+        ORDER BY count DESC, {column}
+        """,
+    )
     return [(row["value"], int(row["count"])) for row in rows]
 
 
-def rename_value(conn: sqlite3.Connection, column: str, old_value: str, new_value: str) -> int:
-    config = VALUE_COLUMNS.get(column)
-    if config is None:
+def list_subcategory_counts(conn: sqlite3.Connection, category: Optional[str] = None) -> List[Tuple[str, str, int]]:
+    params: List[object] = []
+    where_parts = ["subcategory IS NOT NULL"]
+    if category:
+        where_parts.append("category = ?")
+        params.append(category)
+    where_sql = " AND ".join(where_parts)
+    rows = db.fetch_all(
+        conn,
+        f"""
+        SELECT category, subcategory, COUNT(*) AS count
+        FROM transactions
+        WHERE {where_sql}
+        GROUP BY category, subcategory
+        ORDER BY category, subcategory
+        """,
+        params,
+    )
+    return [(row["category"], row["subcategory"], int(row["count"])) for row in rows]
+
+
+def rename_value(
+    conn: sqlite3.Connection,
+    column: str,
+    old_value: str,
+    new_value: str,
+    category: Optional[str] = None,
+) -> int:
+    if column not in FINANCE_COLUMNS:
         raise ValueError(f"Unsupported column: {column}")
-    cursor = db.execute(conn, config["rename_sql"], (new_value, old_value))
+    if column == "subcategory":
+        if not category:
+            raise ValueError("Category is required for subcategory rename")
+        cursor = db.execute(
+            conn,
+            "UPDATE transactions SET subcategory = ? WHERE category = ? AND subcategory = ?",
+            (new_value, category, old_value),
+        )
+        return cursor.rowcount
+    cursor = db.execute(
+        conn,
+        f"UPDATE transactions SET {column} = ? WHERE {column} = ?",
+        (new_value, old_value),
+    )
     return cursor.rowcount
 
 
-def clear_value(conn: sqlite3.Connection, column: str, value: str) -> int:
-    config = VALUE_COLUMNS.get(column)
-    if config is None:
+def clear_value(
+    conn: sqlite3.Connection,
+    column: str,
+    value: str,
+    category: Optional[str] = None,
+) -> int:
+    if column not in FINANCE_COLUMNS:
         raise ValueError(f"Unsupported column: {column}")
-    cursor = db.execute(conn, config["clear_sql"], (value,))
+    if column == "category":
+        raise ValueError("Category cannot be cleared")
+    if column == "subcategory":
+        if not category:
+            raise ValueError("Category is required for subcategory delete")
+        cursor = db.execute(
+            conn,
+            "UPDATE transactions SET subcategory = NULL WHERE category = ? AND subcategory = ?",
+            (category, value),
+        )
+        return cursor.rowcount
+    cursor = db.execute(
+        conn,
+        f"UPDATE transactions SET {column} = NULL WHERE {column} = ?",
+        (value,),
+    )
     return cursor.rowcount
 
 
-def normalize_value(column: str, value: str) -> str:
-    config = VALUE_COLUMNS.get(column)
-    if config is None:
-        raise ValueError(f"Unsupported column: {column}")
-    cleaned = value.strip()
-    return cleaned.lower() if config["lower"] else cleaned
+def count_payer_rename_conflicts(conn: sqlite3.Connection, old_value: str, new_value: str) -> int:
+    row = db.fetch_one(
+        conn,
+        "SELECT COUNT(*) AS count FROM transactions WHERE payer = ? AND payee = ?",
+        (old_value, new_value),
+    )
+    return int(row["count"]) if row else 0
+
+
+def count_payee_rename_conflicts(conn: sqlite3.Connection, old_value: str, new_value: str) -> int:
+    row = db.fetch_one(
+        conn,
+        "SELECT COUNT(*) AS count FROM transactions WHERE payee = ? AND payer = ?",
+        (old_value, new_value),
+    )
+    return int(row["count"]) if row else 0
+
+
+def count_payer_delete_conflicts(conn: sqlite3.Connection, value: str) -> int:
+    row = db.fetch_one(
+        conn,
+        "SELECT COUNT(*) AS count FROM transactions WHERE payer = ? AND payee IS NULL",
+        (value,),
+    )
+    return int(row["count"]) if row else 0
+
+
+def count_payee_delete_conflicts(conn: sqlite3.Connection, value: str) -> int:
+    row = db.fetch_one(
+        conn,
+        "SELECT COUNT(*) AS count FROM transactions WHERE payee = ? AND payer IS NULL",
+        (value,),
+    )
+    return int(row["count"]) if row else 0

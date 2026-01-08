@@ -12,7 +12,7 @@ NODE_MODE_AND = "and"
 TAG_MATCH_ANY = "ANY"
 TAG_MATCH_ALL = "ALL"
 DATE_FIELDS = {"date_payment", "date_application"}
-DEFAULT_DATE_FIELD = "date_payment"
+DEFAULT_DATE_FIELD = "date_application"
 
 
 def compute_comparison(
@@ -39,26 +39,24 @@ def compute_comparison(
         return _compute_for_nodes(conn, periods, groups, mode, date_field, nodes)
 
     entries = and_entries or []
-    tags = [tag.strip().lower() for tag in (and_tags or []) if tag.strip()]
-    if entries:
-        tag_sql, tag_params = _build_tag_filter(tags, tag_match)
-        nodes = []
-        for entry in entries:
-            node_sql, node_params = _build_node_predicate(entry)
-            if tag_sql:
-                combined_sql = f"({node_sql}) AND ({tag_sql})"
-                combined_params = node_params + tag_params
-            else:
-                combined_sql = node_sql
-                combined_params = node_params
-            nodes.append((entry.label, combined_sql, combined_params))
-        return _compute_for_custom_nodes(conn, periods, groups, mode, date_field, nodes)
-
-    if not tags:
+    if not entries:
         return _empty_frame()
 
-    tag_nodes = [Node(label=tag, kind="tag", tag=tag) for tag in tags]
-    return _compute_for_nodes(conn, periods, groups, mode, date_field, tag_nodes)
+    tag_list = [tag.strip().lower() for tag in (and_tags or []) if tag.strip()]
+    tag_sql, tag_params = _build_tag_filter(tag_list, tag_match)
+
+    nodes: List[Tuple[str, str, List[object]]] = []
+    for entry in entries:
+        node_sql, node_params = _build_node_predicate(entry)
+        if tag_sql == "1":
+            combined_sql = node_sql
+            combined_params = node_params
+        else:
+            combined_sql = f"({node_sql}) AND ({tag_sql})"
+            combined_params = node_params + tag_params
+        nodes.append((entry.label, combined_sql, combined_params))
+
+    return _compute_for_custom_nodes(conn, periods, groups, mode, date_field, nodes)
 
 
 def _compute_for_nodes(
@@ -104,14 +102,15 @@ def _compute_for_custom_nodes(
 def _empty_frame() -> pd.DataFrame:
     return pd.DataFrame(
         columns=[
-            "period",
-            "group",
-            "node",
+            "period_label",
+            "group_label",
+            "node_label",
             "tx_count",
             "inflow_cents",
             "outflow_cents",
-            "internal_cents",
             "net_cents",
+            "matched_flow_cents",
+            "mode",
         ]
     )
 
@@ -127,42 +126,69 @@ def _aggregate_cell(
     node_params: List[object],
 ) -> dict:
     date_field = _resolve_date_field(date_field)
-    inflow_sql, outflow_sql, internal_sql, group_any_sql, group_params = _group_predicates(
-        group, mode
-    )
+    payer_sql, payer_params = _in_list("t.payer", group.payers)
+    payee_sql, payee_params = _in_list("t.payee", group.payees)
 
-    sql = f"""
-        SELECT
-            COALESCE(SUM(CASE WHEN {group_any_sql} THEN 1 ELSE 0 END), 0) AS tx_count,
-            COALESCE(SUM(CASE WHEN {inflow_sql} THEN amount_cents ELSE 0 END), 0) AS inflow_cents,
-            COALESCE(SUM(CASE WHEN {outflow_sql} THEN amount_cents ELSE 0 END), 0) AS outflow_cents,
-            COALESCE(SUM(CASE WHEN {internal_sql} THEN amount_cents ELSE 0 END), 0) AS internal_cents
-        FROM transactions t
-        WHERE t.{date_field} >= ? AND t.{date_field} <= ? AND ({node_sql})
+    base_sql = f"""
+        FROM (
+            SELECT
+                t.amount_cents,
+                {payer_sql} AS payer_in_a,
+                {payee_sql} AS payee_in_b
+            FROM transactions t
+            WHERE t.{date_field} >= ? AND t.{date_field} <= ? AND ({node_sql})
+        ) base
     """
-    params = group_params + [period.start_date, period.end_date] + node_params
-    row = conn.execute(sql, params).fetchone()
-    if row is None:
-        tx_count = inflow = outflow = internal = 0
-    else:
-        tx_count = int(row[0])
-        inflow = int(row[1])
-        outflow = int(row[2])
-        internal = int(row[3])
+    base_params = payer_params + payee_params + [period.start_date, period.end_date] + node_params
+
+    if mode == MODE_MATCHED_ONLY:
+        sql = (
+            "SELECT "
+            "COALESCE(SUM(CASE WHEN (payer_in_a AND payee_in_b) THEN 1 ELSE 0 END), 0) AS tx_count, "
+            "COALESCE(SUM(CASE WHEN (payer_in_a AND payee_in_b) THEN amount_cents ELSE 0 END), 0) AS matched_flow "
+            + base_sql
+        )
+        row = conn.execute(sql, base_params).fetchone()
+        tx_count = int(row[0]) if row else 0
+        matched_flow = int(row[1]) if row else 0
+        return {
+            "period_label": period.label,
+            "group_label": group.label,
+            "node_label": node_label,
+            "tx_count": tx_count,
+            "inflow_cents": 0,
+            "outflow_cents": 0,
+            "net_cents": 0,
+            "matched_flow_cents": matched_flow,
+            "mode": mode,
+        }
+
+    sql = (
+        "SELECT "
+        "COALESCE(SUM(CASE WHEN (payer_in_a OR payee_in_b) THEN 1 ELSE 0 END), 0) AS tx_count, "
+        "COALESCE(SUM(CASE WHEN payee_in_b THEN amount_cents ELSE 0 END), 0) AS inflow_cents, "
+        "COALESCE(SUM(CASE WHEN payer_in_a THEN amount_cents ELSE 0 END), 0) AS outflow_cents "
+        + base_sql
+    )
+    row = conn.execute(sql, base_params).fetchone()
+    tx_count = int(row[0]) if row else 0
+    inflow = int(row[1]) if row else 0
+    outflow = int(row[2]) if row else 0
     return {
-        "period": period.label,
-        "group": group.label,
-        "node": node_label,
+        "period_label": period.label,
+        "group_label": group.label,
+        "node_label": node_label,
         "tx_count": tx_count,
         "inflow_cents": inflow,
         "outflow_cents": outflow,
-        "internal_cents": internal,
         "net_cents": inflow - outflow,
+        "matched_flow_cents": 0,
+        "mode": mode,
     }
 
 
 def _build_node_predicate(node: Node) -> Tuple[str, List[object]]:
-    if node.kind == "all":
+    if node.kind in {"all", "all_categories", "all_tags"}:
         return "1", []
     if node.kind == "category":
         return "t.category = ?", [node.category]
@@ -182,9 +208,9 @@ def _build_node_predicate(node: Node) -> Tuple[str, List[object]]:
     raise ValueError("Unsupported node kind")
 
 
-def _build_tag_filter(tags: List[str], match: str) -> Tuple[Optional[str], List[object]]:
+def _build_tag_filter(tags: List[str], match: str) -> Tuple[str, List[object]]:
     if not tags:
-        return None, []
+        return "1", []
     if match == TAG_MATCH_ANY:
         placeholders = ",".join("?" for _ in tags)
         sql = (
@@ -223,62 +249,9 @@ def _resolve_date_field(value: object) -> str:
     return DEFAULT_DATE_FIELD
 
 
-def _group_predicates(group: Group, mode: str) -> Tuple[str, str, str, str, List[object]]:
-    params: List[object] = []
-
-    if mode == MODE_MATCHED_ONLY:
-        group_any = _and(
-            _in_list("t.payer", group.payers, params),
-            _in_list("t.payee", group.payees, params),
-        )
-        inflow = "0"
-        outflow = "0"
-        internal = _and(
-            _in_list("t.payer", group.payers, params),
-            _in_list("t.payee", group.payees, params),
-        )
-        return inflow, outflow, internal, group_any, params
-
-    group_any = _or(
-        _in_list("t.payer", group.payers, params),
-        _in_list("t.payee", group.payees, params),
-    )
-    inflow = _and(
-        _in_list("t.payee", group.payees, params),
-        _not_in_list("t.payer", group.payers, params),
-    )
-    outflow = _and(
-        _in_list("t.payer", group.payers, params),
-        _not_in_list("t.payee", group.payees, params),
-    )
-    internal = _and(
-        _in_list("t.payer", group.payers, params),
-        _in_list("t.payee", group.payees, params),
-    )
-    return inflow, outflow, internal, group_any, params
-
-
-def _in_list(column: str, values: Iterable[str], params: List[object]) -> str:
+def _in_list(column: str, values: Iterable[str]) -> Tuple[str, List[object]]:
     values_list = list(values)
     if not values_list:
-        return "0"
+        return "0", []
     placeholders = ",".join("?" for _ in values_list)
-    params.extend(values_list)
-    return f"{column} IN ({placeholders})"
-
-
-def _not_in_list(column: str, values: Iterable[str], params: List[object]) -> str:
-    values_list = list(values)
-    if not values_list:
-        return "1"
-    placeholders = ",".join("?" for _ in values_list)
-    params.extend(values_list)
-    return f"({column} IS NULL OR {column} NOT IN ({placeholders}))"
-
-
-def _and(left: str, right: str) -> str:
-    return f"({left} AND {right})"
-
-
-def _or(left: str, right: str) -> str:
-    return f"({left} OR {right})"
+    return f"{column} IN ({placeholders})", values_list

@@ -7,8 +7,19 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 from src import amounts, tags
 
-REQUIRED_COLUMNS = {"date_payment", "date_application", "amount", "category"}
-OPTIONAL_COLUMNS = {"payer", "payee", "payment_type", "subcategory", "notes", "tags"}
+REQUIRED_COLUMNS = {"amount", "category"}
+DATE_COLUMNS = {"date_payment", "date_application"}
+PAYER_PAYEE_COLUMNS = {"payer", "payee"}
+OPTIONAL_COLUMNS = {
+    "payer",
+    "payee",
+    "payment_type",
+    "subcategory",
+    "notes",
+    "tags",
+    "date_payment",
+    "date_application",
+}
 EXPORT_COLUMNS = [
     "date_payment",
     "date_application",
@@ -51,9 +62,19 @@ def decode_csv_bytes(data: bytes) -> str:
 
 
 def read_csv_rows(text: str) -> Tuple[List[str], List[Dict[str, Optional[str]]]]:
-    reader = csv.DictReader(io.StringIO(text), delimiter=";")
-    headers = reader.fieldnames or []
-    rows = [row for row in reader]
+    reader = csv.reader(io.StringIO(text), delimiter=";")
+    try:
+        raw_headers = next(reader)
+    except StopIteration:
+        return [], []
+    headers = [_normalize_header(header) for header in raw_headers]
+    _validate_headers(headers)
+    rows: List[Dict[str, Optional[str]]] = []
+    for row in reader:
+        row_map: Dict[str, Optional[str]] = {}
+        for index, header in enumerate(headers):
+            row_map[header] = row[index] if index < len(row) else None
+        rows.append(row_map)
     return headers, rows
 
 
@@ -77,16 +98,16 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
     for index, row in enumerate(rows, start=1):
         row_errors: List[str] = []
         try:
-            date_payment = _parse_date(row.get("date_payment"), "date_payment")
+            date_payment = _parse_date_optional(row.get("date_payment"), "date_payment")
         except ValueError as exc:
             row_errors.append(str(exc))
-            date_payment = ""
+            date_payment = None
 
         try:
-            date_application = _parse_date(row.get("date_application"), "date_application")
+            date_application = _parse_date_optional(row.get("date_application"), "date_application")
         except ValueError as exc:
             row_errors.append(str(exc))
-            date_application = ""
+            date_application = None
 
         try:
             amount_cents = amounts.parse_amount_to_cents(row.get("amount") or "")
@@ -100,13 +121,26 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
             row_errors.append(str(exc))
             category_value = ""
 
-        payer_value = _normalize_optional(row.get("payer"))
-        payee_value = _normalize_optional(row.get("payee"))
+        payer_value = _normalize_optional(row.get("payer"), lower=True)
+        payee_value = _normalize_optional(row.get("payee"), lower=True)
         payment_type_value = _normalize_optional(row.get("payment_type"), lower=True)
         subcategory_value = _normalize_optional(row.get("subcategory"), lower=True)
         notes_value = _normalize_optional(row.get("notes"))
-        tag_values = tags.parse_tags(row.get("tags") or "")
+        try:
+            tag_values = tags.parse_tags(row.get("tags") or "")
+        except ValueError as exc:
+            row_errors.append(str(exc))
+            tag_values = []
 
+        if not date_payment and not date_application:
+            row_errors.append("At least one date is required")
+        if date_payment is None and date_application is not None:
+            date_payment = date_application
+        if date_application is None and date_payment is not None:
+            date_application = date_payment
+
+        if not payer_value and not payee_value:
+            row_errors.append("At least one of payer or payee is required")
         if payer_value and payee_value and payer_value == payee_value:
             row_errors.append("Payer and payee must be different")
 
@@ -116,8 +150,8 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
 
         parsed.append(
             ParsedRow(
-                date_payment=date_payment,
-                date_application=date_application,
+                date_payment=date_payment or "",
+                date_application=date_application or "",
                 amount_cents=amount_cents,
                 payer=payer_value,
                 payee=payee_value,
@@ -246,8 +280,10 @@ def _normalize_required(value: Optional[str], lower: bool = False) -> str:
     return cleaned.lower() if lower else cleaned
 
 
-def _parse_date(value: Optional[str], field_label: str) -> str:
+def _parse_date_optional(value: Optional[str], field_label: str) -> Optional[str]:
     cleaned = (value or "").strip()
+    if not cleaned:
+        return None
     if len(cleaned) != 10:
         raise ValueError(f"Invalid {field_label} format")
     try:
@@ -255,3 +291,17 @@ def _parse_date(value: Optional[str], field_label: str) -> str:
     except ValueError as exc:
         raise ValueError(f"Invalid {field_label} format") from exc
     return cleaned
+
+
+def _normalize_header(header: Optional[str]) -> str:
+    cleaned = (header or "").strip().lower()
+    if not cleaned:
+        raise ValueError("CSV header cannot be empty")
+    return cleaned
+
+
+def _validate_headers(headers: List[str]) -> None:
+    duplicates = {name for name in headers if headers.count(name) > 1}
+    if duplicates:
+        dup_list = ", ".join(sorted(duplicates))
+        raise ValueError(f"Duplicate headers after normalization: {dup_list}")
