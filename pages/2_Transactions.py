@@ -46,7 +46,30 @@ try:
     subcategory_pairs = queries.get_category_subcategory_pairs(conn)
     tag_options = tags.list_tags(conn)
 
-    st.subheader("Filters")
+    search_query = st.text_input(
+        "Search",
+        key="tx_search",
+        placeholder="payer, payee, category, subcategory, tags, notes",
+    )
+    table_container = st.container()
+
+    all_columns = [
+        "id",
+        "date_payment",
+        "date_application",
+        "amount",
+        "payer",
+        "payee",
+        "payment_type",
+        "category",
+        "subcategory",
+        "tags",
+        "notes",
+    ]
+    if "tx_visible_columns" not in st.session_state:
+        st.session_state["tx_visible_columns"] = list(all_columns)
+    visible_columns = st.session_state.get("tx_visible_columns", all_columns)
+
     date_field = "date_application"
     min_date, max_date = queries.get_date_bounds(conn, date_field)
     today = dt.date.today()
@@ -55,6 +78,7 @@ try:
     default_start = date_min_limit or today
     default_end = date_max_limit or today
 
+    st.subheader("Filters")
     with st.form("tx_filters"):
         date_col1, date_col2 = st.columns(2)
         with date_col1:
@@ -108,14 +132,16 @@ try:
 
         st.form_submit_button("Apply filters")
 
+    error_message = None
     if start_date > end_date:
-        st.error("Start date must be before end date.")
+        error_message = "Start date must be before end date."
         transactions: List[sqlite3.Row] = []
     else:
         filters = {
             "date_field": date_field,
             "date_start": start_date.isoformat(),
             "date_end": end_date.isoformat(),
+            "search": search_query,
             "payers": payer_filter,
             "payees": payee_filter,
             "payment_types": payment_type_filter,
@@ -132,53 +158,43 @@ try:
             filters,
         )
 
-    st.subheader("Results")
-    if not transactions:
-        st.info("No transactions match the current filters.")
-    else:
-        display_rows = []
-        for row in transactions:
-            display_rows.append(
-                {
-                    "id": row["id"],
-                    "date_payment": row["date_payment"],
-                    "date_application": row["date_application"],
-                    "amount": amounts.format_cents(int(row["amount_cents"])),
-                    "payer": row["payer"] or "",
-                    "payee": row["payee"] or "",
-                    "payment_type": row["payment_type"] or "",
-                    "category": row["category"],
-                    "subcategory": row["subcategory"] or "",
-                    "tags": row["tags"] or "",
-                    "notes": row["notes"] or "",
-                }
-            )
+    with table_container:
+        if error_message:
+            st.error(error_message)
+        elif not transactions:
+            st.info("No transactions match the current filters.")
+        else:
+            display_rows = []
+            for row in transactions:
+                display_rows.append(
+                    {
+                        "id": row["id"],
+                        "date_payment": row["date_payment"],
+                        "date_application": row["date_application"],
+                        "amount": amounts.format_cents(int(row["amount_cents"])),
+                        "payer": row["payer"] or "",
+                        "payee": row["payee"] or "",
+                        "payment_type": row["payment_type"] or "",
+                        "category": row["category"],
+                        "subcategory": row["subcategory"] or "",
+                        "tags": row["tags"] or "",
+                        "notes": row["notes"] or "",
+                    }
+                )
 
-        all_columns = [
-            "id",
-            "date_payment",
-            "date_application",
-            "amount",
-            "payer",
-            "payee",
-            "payment_type",
-            "category",
-            "subcategory",
-            "tags",
-            "notes",
-        ]
-        visible_columns = st.multiselect(
-            "Visible columns",
-            options=all_columns,
-            default=all_columns,
-            key="tx_visible_columns",
-        )
-        ordered_columns = [col for col in all_columns if col in visible_columns]
-        df = pd.DataFrame(display_rows)
-        if ordered_columns:
-            df = df[ordered_columns]
-        st.caption("Default order is date_application desc; click column headers to sort.")
-        st.dataframe(df, width="stretch", height=520)
+            ordered_columns = [col for col in all_columns if col in visible_columns]
+            df = pd.DataFrame(display_rows)
+            if ordered_columns:
+                df = df[ordered_columns]
+            st.dataframe(df, width="stretch", height=520)
+            st.caption("Default order is date_application desc; click column headers to sort.")
+
+    st.multiselect(
+        "Visible columns",
+        options=all_columns,
+        default=all_columns,
+        key="tx_visible_columns",
+    )
 
     st.divider()
     st.subheader("Add transaction")
