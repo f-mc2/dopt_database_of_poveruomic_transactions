@@ -114,3 +114,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
 ## Reporting
 - Fail fast with clear error messages for constraint violations.
 - Avoid printing any real data; use synthetic examples only.
+
+## Last Run
+- Command: `python3 -m unittest discover -s tests`
+- Result: `Ran 23 tests in 0.096s - OK`
