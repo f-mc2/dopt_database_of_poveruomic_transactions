@@ -121,7 +121,7 @@ Keep files small (<250–300 LOC each).
   `DATA_DICTIONARY.md`, `TECH_DESIGN.md`, and `PRD.md`. No schema drift.
 
 ## 7) Configuration (host vs Docker)
-Host-side repo uses `data/` (gitignored):
+Host-side repo defaults to `data/` (gitignored):
 - `data/finance.db`
 - `data/csv_import/`
 - `data/csv_export/`
@@ -136,7 +136,7 @@ Environment defaults:
 - `FINANCE_CSV_EXPORT_DIR` default `/data/csv_export`
 - `FINANCE_DB_BACKUP_DIR` default `/data/db_backup`
 
-Settings DB (`/data/app_settings.db`) persists:
+Settings DB (`app_settings.db` stored next to FINANCE_DB_PATH; default `/data/app_settings.db`) persists:
 - last-used DB
 - recent DBs (max 3)
 - theme (light/dark)
