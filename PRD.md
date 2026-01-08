@@ -97,6 +97,8 @@ The app runs on a desktop host and is usable on mobile browsers.
 - C8: Output tables per period + node; rows are groups; columns:
   - Role mode: `#tx (inflow ∪ outflow)`, inflow, outflow, net.
   - Matched-only: `#transactions`, matched flow.
+- C9: Charts are per group; nodes are displayed horizontally as separate mini bar charts
+  (periods on x-axis) with independent y-scales.
 
 ## Data Model and Validation
 Authoritative definitions are in `DATA_DICTIONARY.md`. Key rules:

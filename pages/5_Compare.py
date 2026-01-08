@@ -383,14 +383,21 @@ try:
 
             for group_label in results["group_labels"]:
                 st.markdown(f"### {group_label}")
-                chart = plotting.grouped_bar_chart(
-                    chart_df,
-                    group_label=group_label,
-                    value_field="metric_value",
-                    period_order=period_order,
-                    value_title=metric_label,
-                )
-                st.altair_chart(chart, width="stretch")
+                if not node_order:
+                    continue
+                columns = st.columns(len(node_order))
+                for col, node_label in zip(columns, node_order):
+                    with col:
+                        st.caption(node_label)
+                        chart = plotting.node_bar_chart(
+                            chart_df,
+                            group_label=group_label,
+                            node_label=node_label,
+                            value_field="metric_value",
+                            period_order=period_order,
+                            value_title=metric_label,
+                        )
+                        st.altair_chart(chart, width="stretch")
 
 finally:
     if conn is not None:

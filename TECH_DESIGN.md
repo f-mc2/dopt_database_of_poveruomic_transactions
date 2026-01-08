@@ -195,6 +195,8 @@ UI rendering:
 - Tables are per period and node: rows are groups.
 - Role mode shows #tx (inflow ∪ outflow), inflow, outflow, net.
 - Matched-only mode shows #transactions and matched flow.
+- Charts are per group; each node is rendered as its own small bar chart over periods,
+  with an independent y-scale.
 
 ## Query Strategy
 - All SQL uses `?` placeholders only.

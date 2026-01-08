@@ -45,6 +45,8 @@ No tests may read from `./data/` or any real user databases/CSVs.
 - Role vs matched-only outputs differ as expected.
 - TagMatch ANY/ALL behavior in category slices + tag filter mode.
 - Mixed slices include totals for All Categories/All Tags.
+- Charts show one mini bar chart per node (periods on x-axis) laid out horizontally per group;
+  each chart uses its own y-scale.
 
 ## Automated Unit/Integration Tests (Synthetic)
 

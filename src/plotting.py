@@ -39,3 +39,33 @@ def grouped_bar_chart(
         .properties(height=320)
     )
     return chart
+
+
+def node_bar_chart(
+    df: pd.DataFrame,
+    group_label: str,
+    node_label: str,
+    value_field: str,
+    period_order: List[str],
+    value_title: Optional[str] = None,
+) -> alt.Chart:
+    subset = df[(df["group_label"] == group_label) & (df["node_label"] == node_label)]
+    if subset.empty:
+        return alt.Chart(pd.DataFrame({"period_label": [], value_field: []})).mark_bar()
+
+    value_title = value_title or value_field
+    chart = (
+        alt.Chart(subset)
+        .mark_bar()
+        .encode(
+            x=alt.X("period_label:N", sort=period_order, title=""),
+            y=alt.Y(f"{value_field}:Q", title=value_title, axis=alt.Axis(format=",.2f")),
+            tooltip=[
+                alt.Tooltip("period_label:N"),
+                alt.Tooltip(f"{value_field}:Q", title=value_title, format=",.2f"),
+                alt.Tooltip("tx_count:Q"),
+            ],
+        )
+        .properties(height=260)
+    )
+    return chart

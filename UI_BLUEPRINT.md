@@ -150,3 +150,5 @@ Purpose: comparison engine with periods, groups, and node selection.
   - Results table and grouped bar charts.
   - Tables are per period and node: rows are groups; columns are #tx (inflow ∪ outflow), inflow,
     outflow, and net in role mode, or #transactions and matched flow in matched-only mode.
+  - Charts are shown per group as a horizontal row of per-node bar charts (periods on x-axis),
+    each with its own y-scale to avoid flattening small nodes.
