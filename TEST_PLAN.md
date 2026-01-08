@@ -63,6 +63,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
   - Accept `2024-02-29`
   - Reject `2024-02-30`, `2024-13-01`, `2024-00-10`
 - Auto-copy: if one of date_payment/date_application is provided, the other is set before insert.
+- CSV/app validation should reject invalid calendar dates before DB insert (user-friendly error).
 
 ### CSV Import
 - Header normalization: trimmed, case-insensitive; duplicates after normalization rejected.
@@ -80,6 +81,12 @@ No tests may read from `./data/` or any real user databases/CSVs.
 - CHECK constraints for amount >= 0.
 - CHECK constraints for payer/payee invariants.
 - Tag name constraints (non-empty, lower(trim), comma-free).
+- Direct DB insert of non-normalized category (e.g., `" Food "`) should fail.
+- App insert of `" Food "` should succeed after normalization.
+
+### PRAGMA
+- `PRAGMA foreign_keys` returns `1` after connection.
+- File-backed DB uses `journal_mode=wal`.
 
 ### Manage Values
 - Preflight blocks:
@@ -94,10 +101,12 @@ No tests may read from `./data/` or any real user databases/CSVs.
 - AND vs OR slice modes.
 - All categories/tags nodes behave as totals.
 - `#tx (inflow ∪ outflow)` semantics in role mode.
+- Use a canonical fixture to assert tx_count, inflow, outflow, net, matched_flow explicitly.
 
 ### Backup
 - Use sqlite backup API to write a snapshot to `./.tmp_test/`.
 - Validate backup file exists and opens.
+- Backup contains the same row counts as source at time of snapshot.
 
 ## Reporting
 - Fail fast with clear error messages for constraint violations.
