@@ -98,8 +98,9 @@ Many-to-many join between transactions and tags.
 - comparison selections (periods, groups, nodes) are UI-only
 
 ## App Settings DB (app_settings.db)
-Stored in the data directory (default `/data/app_settings.db`) to persist across sessions
-and containers.
+Stored alongside the active finance DB (same directory as the resolved FINANCE_DB_PATH).
+Defaults to `/data/app_settings.db` when using `/data/finance.db`, or `./data/app_settings.db`
+when using the repo data directory. If FINANCE_DB_PATH points elsewhere, the settings DB follows it.
 
 ### app_settings
 Single-row table (id = 1).

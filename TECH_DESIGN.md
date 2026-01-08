@@ -70,7 +70,9 @@ Indexes (recommended):
 Subcategory is hierarchical at the application level: the semantic key is (category, subcategory).
 
 ### App Settings DB (app_settings.db)
-Stored at `/data/app_settings.db` (inside the data volume).
+Stored alongside the active finance DB (same directory as the resolved FINANCE_DB_PATH).
+Defaults to `/data/app_settings.db` when using `/data/finance.db`, or `./data/app_settings.db`
+when using the repo data directory.
 
 Schema (logical):
 - `app_settings` (single row enforced by CHECK):
