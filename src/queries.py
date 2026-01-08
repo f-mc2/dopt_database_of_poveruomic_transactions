@@ -93,9 +93,7 @@ def get_transaction(conn: sqlite3.Connection, transaction_id: int) -> Optional[s
             t.payment_type,
             t.category,
             t.subcategory,
-            t.notes,
-            t.created_at,
-            t.updated_at
+            t.notes
         FROM transactions t
         WHERE t.id = ?
         """,
@@ -115,7 +113,6 @@ def update_transaction(
     category: str,
     subcategory: Optional[str],
     notes: Optional[str],
-    updated_at: str,
 ) -> None:
     db.execute(
         conn,
@@ -129,8 +126,7 @@ def update_transaction(
             payment_type = ?,
             category = ?,
             subcategory = ?,
-            notes = ?,
-            updated_at = ?
+            notes = ?
         WHERE id = ?
         """,
         (
@@ -143,7 +139,6 @@ def update_transaction(
             category,
             subcategory,
             notes,
-            updated_at,
             transaction_id,
         ),
     )
@@ -160,8 +155,6 @@ def insert_transaction(
     category: str,
     subcategory: Optional[str],
     notes: Optional[str],
-    created_at: str,
-    updated_at: str,
 ) -> int:
     cursor = db.execute(
         conn,
@@ -175,11 +168,9 @@ def insert_transaction(
             payment_type,
             category,
             subcategory,
-            notes,
-            created_at,
-            updated_at
+            notes
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             date_payment,
@@ -191,8 +182,6 @@ def insert_transaction(
             category,
             subcategory,
             notes,
-            created_at,
-            updated_at,
         ),
     )
     if cursor.lastrowid is None:

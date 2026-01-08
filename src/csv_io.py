@@ -133,7 +133,6 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
 
 
 def insert_transactions(conn, rows: Sequence[ParsedRow]) -> None:
-    timestamp = dt.datetime.now().isoformat(timespec="seconds")
     for row in rows:
         cursor = conn.execute(
             """
@@ -146,11 +145,9 @@ def insert_transactions(conn, rows: Sequence[ParsedRow]) -> None:
                 payment_type,
                 category,
                 subcategory,
-                notes,
-                created_at,
-                updated_at
+                notes
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 row.date_payment,
@@ -162,8 +159,6 @@ def insert_transactions(conn, rows: Sequence[ParsedRow]) -> None:
                 row.category,
                 row.subcategory,
                 row.notes,
-                timestamp,
-                timestamp,
             ),
         )
         transaction_id = cursor.lastrowid

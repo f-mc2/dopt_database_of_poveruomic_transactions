@@ -206,7 +206,6 @@ try:
         if errors:
             st.error("; ".join(errors))
         else:
-            timestamp = dt.datetime.now().isoformat(timespec="seconds")
             with conn:
                 transaction_id = queries.insert_transaction(
                     conn,
@@ -219,8 +218,6 @@ try:
                     category=category_value,
                     subcategory=subcategory_value,
                     notes=notes_value_clean,
-                    created_at=timestamp,
-                    updated_at=timestamp,
                 )
                 if combined_tags:
                     tags.set_transaction_tags(conn, transaction_id, combined_tags)
@@ -362,7 +359,6 @@ try:
                 if errors:
                     st.error("; ".join(errors))
                 else:
-                    updated_at = dt.datetime.now().isoformat(timespec="seconds")
                     with conn:
                         queries.update_transaction(
                             conn,
@@ -376,7 +372,6 @@ try:
                             category=category_value,
                             subcategory=subcategory_value,
                             notes=notes_value,
-                            updated_at=updated_at,
                         )
                         tags.set_transaction_tags(conn, selected_id, combined_tags)
                     st.success("Transaction updated.")
