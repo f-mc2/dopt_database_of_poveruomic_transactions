@@ -16,6 +16,8 @@ It covers both the finance database and the app settings database.
 - Amount inputs must be non-negative (no leading + or -).
 - Payer and payee must never be equal, and cannot both be NULL.
 - These payer/payee invariants are enforced at the database layer (CHECK constraints).
+- DB enforces lowercase normalization and non-empty values for finance-domain fields
+  (nullable fields must be NULL or non-empty after trim).
 - If only one of date_payment or date_application is provided (UI/CSV), the other is copied
   from it before insert.
 
@@ -42,27 +44,29 @@ Core transaction records. Amount always flows from payer to payee.
 - payer
   - Type: TEXT NULL
   - Meaning: party sending money
-  - Validation: trimmed, lowercase; NULL allowed; cannot equal payee; cannot both be NULL
+  - Validation: trimmed, lowercase; NULL allowed; non-empty after trim; cannot equal payee;
+    cannot both be NULL; DB enforces lower(trim()) when not NULL
 - payee
   - Type: TEXT NULL
   - Meaning: party receiving money
-  - Validation: trimmed, lowercase; NULL allowed; cannot equal payer; cannot both be NULL
+  - Validation: trimmed, lowercase; NULL allowed; non-empty after trim; cannot equal payer;
+    cannot both be NULL; DB enforces lower(trim()) when not NULL
 - category
   - Type: TEXT NOT NULL
   - Meaning: primary category
-  - Validation: trimmed, lowercase; required; non-empty after trim
+  - Validation: trimmed, lowercase; required; non-empty after trim; DB enforces lower(trim())
 - subcategory
   - Type: TEXT NULL
   - Meaning: optional subcategory scoped to the category; the semantic key is (category, subcategory)
-  - Validation: trimmed, lowercase; NULL allowed
+  - Validation: trimmed, lowercase; NULL allowed; non-empty after trim; DB enforces lower(trim())
 - payment_type
   - Type: TEXT NULL
   - Meaning: free-text payment type (e.g., card, transfer)
-  - Validation: trimmed, lowercase; NULL allowed
+  - Validation: trimmed, lowercase; NULL allowed; non-empty after trim; DB enforces lower(trim())
 - notes
   - Type: TEXT NULL
   - Meaning: user notes
-  - Validation: trimmed; NULL allowed; case preserved
+  - Validation: trimmed; NULL allowed; non-empty after trim; case preserved
 
 ### tags
 Normalized tag list.
