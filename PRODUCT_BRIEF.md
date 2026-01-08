@@ -57,9 +57,8 @@ safe database backups.
 - Adding a transaction stores amounts as integer cents and normalizes finance fields to lowercase.
 - Editing a transaction updates tags through normalized tables with no duplicates.
 - Deleting a transaction requires confirmation and removes related tag links.
-- CSV import allows only dot-decimal amounts (no commas or thousands separators) and accepts
-  dot-decimal amounts with 0-2 fractional digits (no commas or thousands separators); accepts
-  a single date by copying it to the other date field before insert.
+- CSV import accepts dot-decimal amounts with 0-2 fractional digits; commas and thousands
+  separators are invalid; accepts a single date by copying it to the other date field before insert.
 - Comparison page supports up to 5 periods and 5 groups, and produces tabular + chart outputs for
   both role and matched-only modes.
 - Manage Values can rename/merge payer, payee, category, subcategory, payment_type, and tags; category
