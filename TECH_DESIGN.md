@@ -143,7 +143,8 @@ Settings rules:
 ## Comparison Engine
 
 ### Inputs
-- Periods: up to 5, each with label, start_date, end_date (inclusive), or full range.
+- Periods: up to 5, each with label, start_date, end_date (inclusive), full range,
+  or full year (Jan 1–Dec 31 of a selected year).
 - Groups: up to 5, each with label and two sets:
   - A (payers)
   - B (payees)

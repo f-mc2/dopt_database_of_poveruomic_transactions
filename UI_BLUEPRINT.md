@@ -125,6 +125,7 @@ Purpose: comparison engine with periods, groups, and node selection.
 - Periods:
   - Up to 5 periods, each with start date and end date (or full range).
   - Default number of periods is 1.
+  - Each period can toggle "Full year" to select a single year (Jan 1–Dec 31).
 - Groups:
   - Up to 5 groups; default number of groups is 1.
   - Each group Gi has:

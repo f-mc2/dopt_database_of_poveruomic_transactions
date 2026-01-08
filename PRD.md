@@ -86,6 +86,7 @@ The app runs on a desktop host and is usable on mobile browsers.
 
 ### Compare
 - C1: Periods: up to 5; each with label and start/end (inclusive) or full range.
+- C1a: Each period can toggle "Full year" to select a single year (Jan 1–Dec 31).
 - C2: Groups: up to 5; each group has payer set A and payee set B.
 - C3: Date field selector applies to all periods.
 - C4: Modes: role vs matched-only (perfect-match label OK).

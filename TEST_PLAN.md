@@ -47,6 +47,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
 - Mixed slices include totals for All Categories/All Tags.
 - Charts show one mini bar chart per node (periods on x-axis) laid out horizontally per group;
   each chart uses its own y-scale.
+- Toggle "Full year" for a period; confirm start/end snap to Jan 1/Dec 31 of the chosen year.
 
 ## Automated Unit/Integration Tests (Synthetic)
 

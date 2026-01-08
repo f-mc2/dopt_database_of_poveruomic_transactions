@@ -152,20 +152,45 @@ try:
                 end_date = max_date_value
                 st.caption(f"{start_date.isoformat()} to {end_date.isoformat()}")
             else:
-                start_date = st.date_input(
-                    "Start date",
-                    value=min_date_value,
-                    min_value=date_min_limit,
-                    max_value=date_max_limit,
-                    key=f"period_start_{idx}",
+                full_year = st.checkbox(
+                    "Use full year",
+                    value=False,
+                    key=f"period_full_year_{idx}",
                 )
-                end_date = st.date_input(
-                    "End date",
-                    value=max_date_value,
-                    min_value=date_min_limit,
-                    max_value=date_max_limit,
-                    key=f"period_end_{idx}",
-                )
+                if full_year:
+                    if date_min_limit and date_max_limit:
+                        min_year = date_min_limit.year
+                        max_year = date_max_limit.year
+                    else:
+                        min_year = dt.date.today().year
+                        max_year = min_year
+                    if min_year > max_year:
+                        min_year = max_year
+                    year_options = list(range(min_year, max_year + 1))
+                    selected_year = st.selectbox(
+                        "Year",
+                        year_options,
+                        index=len(year_options) - 1,
+                        key=f"period_year_{idx}",
+                    )
+                    start_date = dt.date(selected_year, 1, 1)
+                    end_date = dt.date(selected_year, 12, 31)
+                    st.caption(f"{start_date.isoformat()} to {end_date.isoformat()}")
+                else:
+                    start_date = st.date_input(
+                        "Start date",
+                        value=min_date_value,
+                        min_value=date_min_limit,
+                        max_value=date_max_limit,
+                        key=f"period_start_{idx}",
+                    )
+                    end_date = st.date_input(
+                        "End date",
+                        value=max_date_value,
+                        min_value=date_min_limit,
+                        max_value=date_max_limit,
+                        key=f"period_end_{idx}",
+                    )
             if start_date > end_date:
                 period_errors.append(f"Period {idx + 1} has start date after end date.")
             periods.append(
