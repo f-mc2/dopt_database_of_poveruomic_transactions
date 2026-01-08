@@ -1,4 +1,4 @@
-from typing import Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import streamlit as st
 
@@ -85,6 +85,22 @@ def tags_assign(label: str, options: Iterable[str], key: str) -> Tuple[List[str]
 
 def tags_filter(label: str, options: Iterable[str], key: str) -> List[str]:
     return multiselect_existing(label, options, key=key)
+
+
+def subcategory_label_map(
+    pairs: Iterable[Tuple[str, str]], categories: Iterable[str]
+) -> Tuple[List[str], Dict[str, Tuple[str, str]]]:
+    category_list = list(categories)
+    filtered = (
+        [pair for pair in pairs if pair[0] in category_list] if category_list else list(pairs)
+    )
+    labels: List[str] = []
+    label_map: Dict[str, Tuple[str, str]] = {}
+    for category, subcategory in filtered:
+        label = f"{category} / {subcategory}"
+        label_map[label] = (category, subcategory)
+        labels.append(label)
+    return labels, label_map
 
 
 def _normalize_value(value: str) -> str:

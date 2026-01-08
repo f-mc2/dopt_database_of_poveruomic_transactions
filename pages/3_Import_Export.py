@@ -150,17 +150,9 @@ try:
             category_filter = ui_widgets.multiselect_existing(
                 "Categories", category_options, key="export_categories"
             )
-            subcategory_candidates = (
-                [pair for pair in subcategory_pairs if pair[0] in category_filter]
-                if category_filter
-                else subcategory_pairs
+            sub_labels, label_map = ui_widgets.subcategory_label_map(
+                subcategory_pairs, category_filter
             )
-            sub_labels = []
-            label_map = {}
-            for category, subcategory in subcategory_candidates:
-                label = f"{category} / {subcategory}"
-                label_map[label] = (category, subcategory)
-                sub_labels.append(label)
             subcategory_filter_labels = ui_widgets.multiselect_existing(
                 "Subcategories", sub_labels, key="export_subcategories"
             )
