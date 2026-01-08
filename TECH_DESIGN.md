@@ -40,14 +40,14 @@ Schema (logical):
   - notes TEXT NULL
   - CHECK (amount_cents >= 0)
   - CHECK (date_payment GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND
-      date(date_payment) = date_payment)
+      date(date_payment) IS NOT NULL AND date(date_payment) = date_payment)
   - CHECK (date_application GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]' AND
-      date(date_application) = date_application)
+      date(date_application) IS NOT NULL AND date(date_application) = date_application)
   - CHECK (payer IS NOT NULL OR payee IS NOT NULL)
   - CHECK (payer IS NULL OR payee IS NULL OR payer <> payee)
 - `tags`:
   - id INTEGER PRIMARY KEY
-  - name TEXT NOT NULL UNIQUE
+  - name TEXT NOT NULL UNIQUE CHECK (instr(name, ',') = 0)
 - `transaction_tags`:
   - transaction_id INTEGER NOT NULL REFERENCES transactions(id) ON DELETE CASCADE
   - tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE
@@ -95,11 +95,14 @@ Settings rules:
 - Manage Values delete preflight:
   - Deleting payer X is blocked if any transaction with payer X has payee NULL.
   - Deleting payee Y is blocked if any transaction with payee Y has payer NULL.
+- Manage Values rename/merge preflight:
+  - Block operations that would make payer == payee; show counts of conflicting rows.
 - Amounts:
   - Dot decimal only; commas and thousands separators are invalid.
   - Allow digits with optional decimal part of 0-2 digits.
   - Convert with Decimal, quantize to 2 decimals, and multiply by 100 to `amount_cents`.
   - Reject inputs with more than two decimals.
+  - Reject signed amounts (no leading + or -).
 
 ## CSV Import
 - Semicolon-separated CSV.
@@ -110,7 +113,7 @@ Settings rules:
   - at least one of `payer` / `payee`
 - Optional columns: `payer`, `payee`, `subcategory`, `payment_type`, `notes`, `tags`.
 - `tags` column is comma-separated; trim, lowercase, dedupe, drop empties.
-- Reject tag values that contain commas.
+- No escaping is supported; tag names cannot contain commas.
 - Validation occurs for all rows first; insert runs inside a single transaction.
 - If any row is invalid, the import aborts without partial inserts.
 
@@ -176,7 +179,7 @@ Comparison engine returns a dataframe with:
 
 UI rendering:
 - Tables are per period and node: rows are groups.
-- Role mode shows #transactions, inflow, outflow, net.
+- Role mode shows #tx (inflow ∪ outflow), inflow, outflow, net.
 - Matched-only mode shows #transactions and matched flow.
 
 ## Query Strategy
