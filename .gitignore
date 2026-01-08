@@ -1,11 +1,8 @@
-.venv/
 data/
 *.db
 *.db-wal
 *.db-shm
 .tmp_test/
 __pycache__/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
 .dopt_state.json
+.venv/
