@@ -3,6 +3,7 @@
 ## Global Layout and Rules
 - Streamlit multipage navigation in the sidebar.
 - Desktop-first layout with mobile-safe stacking.
+- Each page sets Streamlit layout to wide via set_page_config.
 - Destructive actions always require explicit confirmation.
 - No arbitrary bulk edit/delete of transactions; only one-at-a-time edits.
   Controlled bulk operations are limited to Manage Values rename/merge/delete.
@@ -10,7 +11,7 @@
 - Use existing values whenever possible; creation is allowed only in explicit contexts
   (transaction entry, tag assignment, and Manage Values rename/merge).
 - Tag names cannot contain commas to ensure CSV round-tripping.
-- Missing payer/payee/payment_type are stored as NULL; NULL values are not selectable in filters.
+- Missing payer/payee/payment_type are stored as NULL; filters can select "Missing (NULL)".
 - Payer must always differ from payee; operations that would violate this are blocked with a warning.
 - Selected database path and configured import/export/backup directories persist across sessions
   via a small settings SQLite DB stored alongside the active finance DB (gitignored); it
