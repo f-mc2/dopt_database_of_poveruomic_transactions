@@ -9,6 +9,7 @@ privacy leaks, and unintended scope creep.
 - During the spec-only phase, do not create or modify runtime files (`app.py`, `src/`, `pages/`,
   `schema.sql`, `Dockerfile`, `docker-compose.yml`, `requirements.txt`, etc.).
 - During spec-only, `schema.sql` is frozen; describe schema changes in docs only.
+- Current status: `PRD.md` is approved; spec-only restrictions are lifted.
 
 ## 1) Scope and workspace boundaries (hard rules)
 
@@ -121,22 +122,20 @@ Keep files small (<250–300 LOC each).
   `DATA_DICTIONARY.md`, `TECH_DESIGN.md`, and `PRD.md`. No schema drift.
 
 ## 7) Configuration (host vs Docker)
-Host-side repo defaults to `data/` (gitignored):
-- `data/finance.db`
-- `data/csv_import/`
-- `data/csv_export/`
-- `data/db_backup/`
-- `data/app_settings.db`
+Host-side repo defaults to `./data/` (gitignored):
+- `./data/finance.db`
+- `./data/csv_import/`
+- `./data/csv_export/`
+- `./data/db_backup/`
+- `./data/app_settings.db`
 
 Container convention: mount `./data` to `/data`.
 
 Environment defaults:
-- `FINANCE_DB_PATH` default `/data/finance.db`
-- `FINANCE_CSV_IMPORT_DIR` default `/data/csv_import`
-- `FINANCE_CSV_EXPORT_DIR` default `/data/csv_export`
-- `FINANCE_DB_BACKUP_DIR` default `/data/db_backup`
+- Host: defaults to `./data/...` unless overridden by `FINANCE_*` env vars.
+- Docker: defaults to `/data/...` when running in a container.
 
-Settings DB (`app_settings.db` stored next to FINANCE_DB_PATH; default `/data/app_settings.db`) persists:
+Settings DB (`app_settings.db` stored next to the active FINANCE_DB_PATH) persists:
 - last-used DB
 - recent DBs (max 3)
 - import/export/backup dirs (editable in UI)
@@ -147,6 +146,7 @@ Settings DB (`app_settings.db` stored next to FINANCE_DB_PATH; default `/data/ap
 - Prefer existing DB values; creation only in explicit contexts.
 - Confirm destructive operations.
 - Transactions list supports column hide/show and ordering; date filter uses `date_application`.
+- P1 widgets for nullable fields provide an explicit "(none)" choice that stores NULL.
 
 ## 9) CSV import/export
 Import:
@@ -166,7 +166,7 @@ Export:
 
 ## 10) Comparison logic
 Implement exactly as specified in `PRD.md` (periods, groups, role vs matched-only,
-slice modes, TagMatch ANY/ALL, node outputs).
+slice modes, TagMatch ANY/ALL, node outputs, disambiguated OR-mode labels).
 
 ## 11) Testing policy
 - Use synthetic data only (`tests/fixtures`, `./.tmp_test/`, or `:memory:`).
