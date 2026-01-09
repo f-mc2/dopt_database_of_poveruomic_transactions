@@ -7,6 +7,13 @@ import streamlit as st
 
 from src import csv_io, db, queries, session_state, tags, ui_widgets
 
+st.set_page_config(
+    page_title="Import / Export",
+    page_icon="\U0001F4B6",
+    initial_sidebar_state="auto",
+    layout="wide",
+)
+
 session_state.ensure_db_session_state()
 ui_widgets.render_sidebar_nav()
 
