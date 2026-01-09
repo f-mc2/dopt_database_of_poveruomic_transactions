@@ -227,83 +227,82 @@ try:
 
     st.divider()
     st.subheader("Add transaction")
-    with st.form("add_transaction"):
-        date_payment = st.date_input(
-            "Payment date",
+    date_payment = st.date_input(
+        "Payment date",
+        value=today,
+        min_value=DATE_INPUT_MIN,
+        max_value=DATE_INPUT_MAX,
+        key="add_date_payment",
+    )
+    copy_dates = st.checkbox(
+        "Use payment date for application date",
+        value=True,
+        key="add_copy_dates",
+    )
+    if copy_dates:
+        st.date_input(
+            "Application date",
+            value=date_payment,
+            min_value=DATE_INPUT_MIN,
+            max_value=DATE_INPUT_MAX,
+            key="add_date_application",
+            disabled=True,
+        )
+        date_application = date_payment
+    else:
+        date_application = st.date_input(
+            "Application date",
             value=today,
             min_value=DATE_INPUT_MIN,
             max_value=DATE_INPUT_MAX,
-            key="add_date_payment",
+            key="add_date_application",
         )
-        copy_dates = st.checkbox(
-            "Use payment date for application date",
-            value=True,
-            key="add_copy_dates",
-        )
-        if copy_dates:
-            st.date_input(
-                "Application date",
-                value=date_payment,
-                min_value=DATE_INPUT_MIN,
-                max_value=DATE_INPUT_MAX,
-                key="add_date_application",
-                disabled=True,
-            )
-            date_application = date_payment
-        else:
-            date_application = st.date_input(
-                "Application date",
-                value=today,
-                min_value=DATE_INPUT_MIN,
-                max_value=DATE_INPUT_MAX,
-                key="add_date_application",
-            )
-        form_amount = st.text_input("Amount", value="0.00", key="add_amount")
+    form_amount = st.text_input("Amount", value="0.00", key="add_amount")
 
-        payer_value, _ = ui_widgets.select_or_create(
-            "Payer",
-            payer_options,
-            key="add_payer",
-            allow_empty=True,
-        )
-        payee_value, _ = ui_widgets.select_or_create(
-            "Payee",
-            payee_options,
-            key="add_payee",
-            allow_empty=True,
-        )
-        payment_type_value, _ = ui_widgets.select_or_create(
-            "Payment type",
-            payment_type_options,
-            key="add_payment_type",
-            allow_empty=True,
-        )
-        category_value, _ = ui_widgets.select_or_create(
-            "Category",
-            category_options,
-            key="add_category",
-            allow_empty=False,
-        )
-        subcategory_options = (
-            queries.get_subcategories_for_category(conn, category_value)
-            if category_value
-            else []
-        )
-        subcategory_value, _ = ui_widgets.select_or_create(
-            "Subcategory",
-            subcategory_options,
-            key="add_subcategory",
-            allow_empty=True,
-        )
-        form_notes = st.text_area("Notes", key="add_notes")
+    payer_value, _ = ui_widgets.select_or_create(
+        "Payer",
+        payer_options,
+        key="add_payer",
+        allow_empty=True,
+    )
+    payee_value, _ = ui_widgets.select_or_create(
+        "Payee",
+        payee_options,
+        key="add_payee",
+        allow_empty=True,
+    )
+    payment_type_value, _ = ui_widgets.select_or_create(
+        "Payment type",
+        payment_type_options,
+        key="add_payment_type",
+        allow_empty=True,
+    )
+    category_value, _ = ui_widgets.select_or_create(
+        "Category",
+        category_options,
+        key="add_category",
+        allow_empty=False,
+    )
+    subcategory_options = (
+        queries.get_subcategories_for_category(conn, category_value)
+        if category_value
+        else []
+    )
+    subcategory_value, _ = ui_widgets.select_or_create(
+        "Subcategory",
+        subcategory_options,
+        key="add_subcategory",
+        allow_empty=True,
+    )
+    form_notes = st.text_area("Notes", key="add_notes")
 
-        selected_tags, new_tag = ui_widgets.tags_assign(
-            "Tags",
-            tag_options,
-            key="add_tags",
-        )
+    selected_tags, new_tag = ui_widgets.tags_assign(
+        "Tags",
+        tag_options,
+        key="add_tags",
+    )
 
-        submitted_new = st.form_submit_button("Add transaction")
+    submitted_new = st.button("Add transaction", key="add_transaction_submit")
 
     if submitted_new:
         errors: List[str] = []
