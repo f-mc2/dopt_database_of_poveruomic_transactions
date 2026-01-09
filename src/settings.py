@@ -15,18 +15,16 @@ def _default_db_path() -> str:
     env_path = os.environ.get("FINANCE_DB_PATH")
     if env_path:
         return env_path
-    if Path("/data").exists():
-        return "/data/finance.db"
     return str(REPO_DATA_DIR / "finance.db")
 
 
 DEFAULT_DB_PATH = _default_db_path()
+
+
 def _default_dir(env_name: str, subdir: str) -> str:
     env_path = os.environ.get(env_name)
     if env_path:
         return env_path
-    if Path("/data").exists():
-        return f"/data/{subdir}"
     return str(REPO_DATA_DIR / subdir)
 
 
@@ -35,13 +33,13 @@ DEFAULT_EXPORT_DIR = _default_dir("FINANCE_CSV_EXPORT_DIR", "csv_export")
 DEFAULT_BACKUP_DIR = _default_dir("FINANCE_DB_BACKUP_DIR", "db_backup")
 
 
-def settings_db_path() -> str:
-    base_path = Path(DEFAULT_DB_PATH).expanduser()
+def settings_db_path(finance_db_path: Optional[str] = None) -> str:
+    base_path = Path((finance_db_path or DEFAULT_DB_PATH)).expanduser()
     return str(base_path.parent / "app_settings.db")
 
 
-def connect_settings_db() -> sqlite3.Connection:
-    path = Path(settings_db_path()).expanduser()
+def connect_settings_db(finance_db_path: Optional[str] = None) -> sqlite3.Connection:
+    path = Path(settings_db_path(finance_db_path)).expanduser()
     _ensure_parent_dir(path)
     conn = db.connect(str(path))
     db.init_settings_db(conn)

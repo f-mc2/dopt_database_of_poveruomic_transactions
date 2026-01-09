@@ -7,10 +7,13 @@ import streamlit as st
 from src import db, settings
 
 
-def ensure_db_session_state(settings_conn: Optional[sqlite3.Connection] = None) -> None:
+def ensure_db_session_state(
+    settings_conn: Optional[sqlite3.Connection] = None,
+    reload_paths: bool = False,
+) -> None:
     close_conn = False
     if settings_conn is None:
-        settings_conn = settings.connect_settings_db()
+        settings_conn = settings.connect_settings_db(st.session_state.get("db_path"))
         close_conn = True
     app_settings = settings.get_app_settings(settings_conn)
 
@@ -24,15 +27,15 @@ def ensure_db_session_state(settings_conn: Optional[sqlite3.Connection] = None) 
         st.session_state.db_auto_open_attempted = False
     if "db_auto_open_error" not in st.session_state:
         st.session_state.db_auto_open_error = None
-    if "csv_import_dir" not in st.session_state:
+    if "csv_import_dir" not in st.session_state or reload_paths:
         st.session_state.csv_import_dir = settings.resolve_setting(
             app_settings.get("csv_import_dir"), settings.DEFAULT_IMPORT_DIR
         )
-    if "csv_export_dir" not in st.session_state:
+    if "csv_export_dir" not in st.session_state or reload_paths:
         st.session_state.csv_export_dir = settings.resolve_setting(
             app_settings.get("csv_export_dir"), settings.DEFAULT_EXPORT_DIR
         )
-    if "db_backup_dir" not in st.session_state:
+    if "db_backup_dir" not in st.session_state or reload_paths:
         st.session_state.db_backup_dir = settings.resolve_setting(
             app_settings.get("db_backup_dir"), settings.DEFAULT_BACKUP_DIR
         )

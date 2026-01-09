@@ -19,17 +19,11 @@ SCHEMA_PATH = REPO_ROOT / "schema.sql"
 
 def _reset_session_state(
     new_db_path: str,
-    import_dir: str,
-    export_dir: str,
-    backup_dir: str,
 ) -> None:
     st.session_state.clear()
     st.session_state.db_path = new_db_path
     st.session_state.db_ready = False
     st.session_state.db_auto_open_attempted = False
-    st.session_state.csv_import_dir = import_dir
-    st.session_state.csv_export_dir = export_dir
-    st.session_state.db_backup_dir = backup_dir
     st.session_state.db_switch_notice = True
 
 
@@ -50,6 +44,12 @@ st.markdown("# Home")
 
 settings_conn = settings.connect_settings_db()
 session_state.ensure_db_session_state(settings_conn)
+default_settings_path = settings.settings_db_path()
+active_settings_path = settings.settings_db_path(st.session_state.db_path)
+if active_settings_path != default_settings_path:
+    settings_conn.close()
+    settings_conn = settings.connect_settings_db(st.session_state.db_path)
+    session_state.ensure_db_session_state(settings_conn, reload_paths=True)
 ui_widgets.render_sidebar_nav()
 recent_paths = settings.get_recent_db_paths(settings_conn)
 
@@ -89,9 +89,6 @@ if st.button("Use selected path"):
         else:
             _reset_session_state(
                 selected_path,
-                st.session_state.csv_import_dir,
-                st.session_state.csv_export_dir,
-                st.session_state.db_backup_dir,
             )
             st.success("Database path updated.")
             st.rerun()
