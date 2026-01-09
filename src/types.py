@@ -14,6 +14,8 @@ class Group:
     label: str
     payers: List[str]
     payees: List[str]
+    include_missing_payer: bool = False
+    include_missing_payee: bool = False
 
 
 @dataclass(frozen=True)

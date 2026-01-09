@@ -126,8 +126,12 @@ def _aggregate_cell(
     node_params: List[object],
 ) -> dict:
     date_field = _resolve_date_field(date_field)
-    payer_sql, payer_params = _in_list("t.payer", group.payers)
-    payee_sql, payee_params = _in_list("t.payee", group.payees)
+    payer_sql, payer_params = _in_list(
+        "t.payer", group.payers, group.include_missing_payer
+    )
+    payee_sql, payee_params = _in_list(
+        "t.payee", group.payees, group.include_missing_payee
+    )
 
     base_sql = f"""
         FROM (
@@ -249,9 +253,15 @@ def _resolve_date_field(value: object) -> str:
     return DEFAULT_DATE_FIELD
 
 
-def _in_list(column: str, values: Iterable[str]) -> Tuple[str, List[object]]:
+def _in_list(
+    column: str, values: Iterable[str], include_missing: bool = False
+) -> Tuple[str, List[object]]:
     values_list = list(values)
     if not values_list:
+        if include_missing:
+            return f"{column} IS NULL", []
         return "0", []
     placeholders = ",".join("?" for _ in values_list)
+    if include_missing:
+        return f"({column} IN ({placeholders}) OR {column} IS NULL)", values_list
     return f"{column} IN ({placeholders})", values_list

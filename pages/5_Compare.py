@@ -80,6 +80,8 @@ def _comparison_signature(
                 group.label,
                 tuple(sorted(group.payers)),
                 tuple(sorted(group.payees)),
+                group.include_missing_payer,
+                group.include_missing_payee,
             )
             for group in groups
         ],
@@ -232,12 +234,13 @@ try:
                 value=f"Group {idx + 1}",
                 key=f"group_label_{idx}",
             )
-            payers = ui_widgets.multiselect_existing(
+            st.caption("Select 'Missing (NULL)' to include or isolate missing values.")
+            payers, include_missing_payer = ui_widgets.multiselect_with_missing(
                 "Payers",
                 payer_options,
                 key=f"group_{idx}_payers",
             )
-            payees = ui_widgets.multiselect_existing(
+            payees, include_missing_payee = ui_widgets.multiselect_with_missing(
                 "Payees",
                 payee_options,
                 key=f"group_{idx}_payees",
@@ -247,6 +250,8 @@ try:
                     label=_default_label("Group", idx + 1, label_input),
                     payers=payers,
                     payees=payees,
+                    include_missing_payer=include_missing_payer,
+                    include_missing_payee=include_missing_payee,
                 )
             )
 
