@@ -1,0 +1,13 @@
+data/
+*.db
+*.db-shm
+*.db-wal
+.tmp_test/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+.git/
+.dopt_state.json
+.env
