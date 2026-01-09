@@ -70,9 +70,9 @@ Indexes (recommended):
 Subcategory is hierarchical at the application level: the semantic key is (category, subcategory).
 
 ### App Settings DB (app_settings.db)
-Stored alongside the active finance DB (same directory as the resolved FINANCE_DB_PATH).
+Stored alongside the active finance DB (same directory as the resolved DOPT_DB_PATH).
 Host default is `./data/app_settings.db`; container default is `/data/app_settings.db` when
-running in Docker. If FINANCE_DB_PATH points elsewhere, the settings DB follows it.
+running in Docker. If DOPT_DB_PATH points elsewhere, the settings DB follows it.
 
 Schema (logical):
 - `app_settings` (single row enforced by CHECK):

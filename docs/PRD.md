@@ -140,9 +140,9 @@ For each period P, group G=(A,B), node N:
   - `#transactions` = distinct matched tx.
 
 ## Settings and Persistence
-- Settings DB: `app_settings.db` stored alongside the active finance DB (parent of FINANCE_DB_PATH).
+- Settings DB: `app_settings.db` stored alongside the active finance DB (parent of DOPT_DB_PATH).
   Host default is `./data/app_settings.db`; container default is `/data/app_settings.db` when
-  running in Docker. If FINANCE_DB_PATH points elsewhere, the settings DB follows it. Stores
+  running in Docker. If DOPT_DB_PATH points elsewhere, the settings DB follows it. Stores
   last-used DB, recent DBs (max 3), and import/export/backup dirs.
 - Settings DB is the only persisted UI config; no saved reports/presets.
 

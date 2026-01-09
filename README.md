@@ -35,10 +35,10 @@ Defaults:
 - DB backup dir: `./data/db_backup`
 
 Override with env vars:
-- `FINANCE_DB_PATH`
-- `FINANCE_CSV_IMPORT_DIR`
-- `FINANCE_CSV_EXPORT_DIR`
-- `FINANCE_DB_BACKUP_DIR`
+- `DOPT_DB_PATH`
+- `DOPT_CSV_IMPORT_DIR`
+- `DOPT_CSV_EXPORT_DIR`
+- `DOPT_DB_BACKUP_DIR`
 
 ## How to use the app
 - Home: open or create a finance DB and see key stats.

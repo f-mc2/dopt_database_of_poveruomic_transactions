@@ -132,10 +132,10 @@ Host-side repo defaults to `./data/` (gitignored):
 Container convention: mount `./data` to `/data`.
 
 Environment defaults:
-- Host: defaults to `./data/...` unless overridden by `FINANCE_*` env vars.
+- Host: defaults to `./data/...` unless overridden by `DOPT_*` env vars.
 - Docker: defaults to `/data/...` when running in a container.
 
-Settings DB (`app_settings.db` stored next to the active FINANCE_DB_PATH) persists:
+Settings DB (`app_settings.db` stored next to the active DOPT_DB_PATH) persists:
 - last-used DB
 - recent DBs (max 3)
 - import/export/backup dirs (editable in UI)

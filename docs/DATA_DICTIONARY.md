@@ -102,9 +102,9 @@ Many-to-many join between transactions and tags.
 - comparison selections (periods, groups, nodes) are UI-only
 
 ## App Settings DB (app_settings.db)
-Stored alongside the active finance DB (same directory as the resolved FINANCE_DB_PATH).
+Stored alongside the active finance DB (same directory as the resolved DOPT_DB_PATH).
 Host default is `./data/app_settings.db`; container default is `/data/app_settings.db` when
-running in Docker. If FINANCE_DB_PATH points elsewhere, the settings DB follows it.
+running in Docker. If DOPT_DB_PATH points elsewhere, the settings DB follows it.
 Theme is controlled by Streamlit settings and is not stored in this DB.
 
 ### app_settings
