@@ -43,10 +43,22 @@ def _build_or_nodes(
     sub_pairs: List[Tuple[str, str]],
     tag_list: List[str],
 ) -> Dict[str, Node]:
-    nodes = _build_category_nodes(categories, sub_pairs)
+    nodes: Dict[str, Node] = {"All categories": Node(label="All categories", kind="all_categories")}
+    for category in categories:
+        label = f"category:{category}"
+        nodes[label] = Node(label=label, kind="category", category=category)
+    for category, subcategory in sub_pairs:
+        label = f"subcategory:{category}/{subcategory}"
+        nodes[label] = Node(
+            label=label,
+            kind="subcategory",
+            category=category,
+            subcategory=subcategory,
+        )
     nodes["All tags"] = Node(label="All tags", kind="all_tags")
     for tag in tag_list:
-        nodes[tag] = Node(label=tag, kind="tag", tag=tag)
+        label = f"tag:{tag}"
+        nodes[label] = Node(label=label, kind="tag", tag=tag)
     return nodes
 
 
