@@ -63,6 +63,8 @@ def select_or_create(
     suggestions = [opt for opt in options_list if search in opt.lower()]
     if not suggestions:
         suggestions = [_NO_MATCHES]
+    if allow_empty:
+        suggestions = [_NONE] + suggestions
 
     selection = st.selectbox(
         f"{label} suggestions",
@@ -77,7 +79,7 @@ def select_or_create(
         is_new = normalized not in normalized_options
         if is_new:
             st.caption(f"Will create new value: {normalized}")
-    elif selection != _NO_MATCHES:
+    elif selection not in {_NO_MATCHES, _NONE}:
         chosen_value = selection
         st.caption(f"Using suggestion: {selection}")
 
