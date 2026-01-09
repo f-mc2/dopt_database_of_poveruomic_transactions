@@ -340,8 +340,6 @@ def _apply_optional_filter(
     where_clauses: List[str],
     params: List[object],
 ) -> None:
-    if not values:
-        return
     if isinstance(values, str):
         selected = [values]
     elif isinstance(values, Iterable):
@@ -349,6 +347,8 @@ def _apply_optional_filter(
     else:
         selected = []
     if not selected:
+        if include_missing:
+            where_clauses.append(f"{column} IS NULL")
         return
     parts: List[str] = []
     placeholders = ",".join("?" for _ in selected)

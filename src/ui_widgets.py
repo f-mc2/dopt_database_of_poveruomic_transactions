@@ -4,6 +4,7 @@ import streamlit as st
 
 _NO_MATCHES = "(no matches)"
 _NONE = "(none)"
+_MISSING = "Missing (NULL)"
 _NAV_ITEMS = (
     ("app.py", "HOME"),
     ("pages/1_Tutorial.py", "Tutorial"),
@@ -113,6 +114,23 @@ def multiselect_existing(label: str, options: Iterable[str], key: str) -> List[s
             if item not in option_list:
                 option_list.append(item)
     return st.multiselect(label, options=option_list, default=selected, key=key)
+
+
+def multiselect_with_missing(
+    label: str, options: Iterable[str], key: str, missing_label: str = _MISSING
+) -> Tuple[List[str], bool]:
+    selected = st.session_state.get(key, [])
+    option_list = list(options)
+    if missing_label not in option_list:
+        option_list = [missing_label] + option_list
+    if selected:
+        for item in selected:
+            if item not in option_list:
+                option_list.append(item)
+    selection = st.multiselect(label, options=option_list, default=selected, key=key)
+    include_missing = missing_label in selection
+    filtered = [item for item in selection if item != missing_label]
+    return filtered, include_missing
 
 
 def tags_assign(label: str, options: Iterable[str], key: str) -> Tuple[List[str], str]:

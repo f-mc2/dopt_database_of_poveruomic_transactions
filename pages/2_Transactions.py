@@ -128,23 +128,18 @@ try:
                 key="tx_filter_end",
             )
 
-        payer_filter = ui_widgets.multiselect_existing(
+        st.caption(
+            "Leave a filter empty to include all values. Select 'Missing (NULL)' to include "
+            "or isolate missing values."
+        )
+        payer_filter, include_missing_payer = ui_widgets.multiselect_with_missing(
             "Payers", payer_options, key="tx_filter_payers"
         )
-        include_missing_payer = st.checkbox(
-            "Include missing payer", key="tx_filter_missing_payer"
-        )
-        payee_filter = ui_widgets.multiselect_existing(
+        payee_filter, include_missing_payee = ui_widgets.multiselect_with_missing(
             "Payees", payee_options, key="tx_filter_payees"
         )
-        include_missing_payee = st.checkbox(
-            "Include missing payee", key="tx_filter_missing_payee"
-        )
-        payment_type_filter = ui_widgets.multiselect_existing(
+        payment_type_filter, include_missing_payment_type = ui_widgets.multiselect_with_missing(
             "Payment types", payment_type_options, key="tx_filter_payment_types"
-        )
-        include_missing_payment_type = st.checkbox(
-            "Include missing payment type", key="tx_filter_missing_payment_type"
         )
 
         category_filter = ui_widgets.multiselect_existing(

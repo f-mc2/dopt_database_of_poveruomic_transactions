@@ -151,23 +151,20 @@ try:
             subcategory_pairs = queries.get_category_subcategory_pairs(conn)
             tag_options = tags.list_tags(conn)
 
-            payer_filter = ui_widgets.multiselect_existing(
+            st.caption(
+                "Leave a filter empty to include all values. Select 'Missing (NULL)' to include "
+                "or isolate missing values."
+            )
+            payer_filter, include_missing_payer = ui_widgets.multiselect_with_missing(
                 "Payers", payer_options, key="export_payers"
             )
-            include_missing_payer = st.checkbox(
-                "Include missing payer", key="export_missing_payer"
-            )
-            payee_filter = ui_widgets.multiselect_existing(
+            payee_filter, include_missing_payee = ui_widgets.multiselect_with_missing(
                 "Payees", payee_options, key="export_payees"
             )
-            include_missing_payee = st.checkbox(
-                "Include missing payee", key="export_missing_payee"
-            )
-            payment_type_filter = ui_widgets.multiselect_existing(
-                "Payment types", payment_type_options, key="export_payment_types"
-            )
-            include_missing_payment_type = st.checkbox(
-                "Include missing payment type", key="export_missing_payment_type"
+            payment_type_filter, include_missing_payment_type = (
+                ui_widgets.multiselect_with_missing(
+                    "Payment types", payment_type_options, key="export_payment_types"
+                )
             )
             category_filter = ui_widgets.multiselect_existing(
                 "Categories", category_options, key="export_categories"
