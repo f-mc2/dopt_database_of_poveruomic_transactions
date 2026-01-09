@@ -102,26 +102,47 @@ try:
         else:
             date_min_limit = dt.date.fromisoformat(min_date)
             date_max_limit = dt.date.fromisoformat(max_date)
-            start_default = date_min_limit
-            end_default = date_max_limit
 
-            date_col1, date_col2 = st.columns(2)
-            with date_col1:
-                start_date = st.date_input(
-                    "Start date",
-                    value=start_default,
-                    min_value=date_min_limit,
-                    max_value=date_max_limit,
-                    key="export_start_date",
-                )
-            with date_col2:
-                end_date = st.date_input(
-                    "End date",
-                    value=end_default,
-                    min_value=date_min_limit,
-                    max_value=date_max_limit,
-                    key="export_end_date",
-                )
+            full_range = st.checkbox("Full period", value=True, key="export_full_range")
+            if full_range:
+                start_date = date_min_limit
+                end_date = date_max_limit
+                st.caption(f"{start_date.isoformat()} to {end_date.isoformat()}")
+            else:
+                full_year = st.checkbox("Full year", value=False, key="export_full_year")
+                if full_year:
+                    min_year = date_min_limit.year
+                    max_year = date_max_limit.year
+                    if min_year > max_year:
+                        min_year = max_year
+                    year_options = list(range(min_year, max_year + 1))
+                    selected_year = st.selectbox(
+                        "Year",
+                        year_options,
+                        index=len(year_options) - 1,
+                        key="export_year",
+                    )
+                    start_date = dt.date(selected_year, 1, 1)
+                    end_date = dt.date(selected_year, 12, 31)
+                    st.caption(f"{start_date.isoformat()} to {end_date.isoformat()}")
+                else:
+                    date_col1, date_col2 = st.columns(2)
+                    with date_col1:
+                        start_date = st.date_input(
+                            "Start date",
+                            value=date_min_limit,
+                            min_value=date_min_limit,
+                            max_value=date_max_limit,
+                            key="export_start_date",
+                        )
+                    with date_col2:
+                        end_date = st.date_input(
+                            "End date",
+                            value=date_max_limit,
+                            min_value=date_min_limit,
+                            max_value=date_max_limit,
+                            key="export_end_date",
+                        )
 
             payer_options = queries.get_distinct_values(conn, "payer")
             payee_options = queries.get_distinct_values(conn, "payee")
