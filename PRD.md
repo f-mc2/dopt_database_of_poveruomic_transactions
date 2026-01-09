@@ -54,6 +54,10 @@ The app runs on a desktop host and is usable on mobile browsers.
 - T5: Tag filters use ANY semantics; if tags selected, untagged tx are excluded.
 - T6: List view is a scrollable table showing all filtered transactions with all fields as columns;
   tags shown as a comma-separated, lexicographically sorted list.
+- T6a: Default column order is id, date_payment, date_application, payer, payee, amount_cents,
+  category, subcategory, notes, tags, payment_type.
+- T6b: Column display labels are id, Date payment, Date application, Payer, Payee, Amount
+  (amount_cents/100), Category, Subcategory, Notes, Tags, Payment type.
 - T7: User can hide/show columns.
 - T8: Default order is date_application desc, id desc; user can sort by clicking column headers
   in the table (no separate sort control or pagination in MVP).

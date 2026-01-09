@@ -93,8 +93,12 @@ Many-to-many join between transactions and tags.
 - Primary key: (transaction_id, tag_id)
 
 ## Derived (Not Stored)
-- amount_display: string formatted as decimal with "." and two digits (e.g., 5.01)
+- amount_display: string formatted as decimal with "." and two digits (amount_cents/100)
 - tags list: derived from tags and transaction_tags
+- transactions_list_columns: default order and display labels for the list view:
+  id (id), date_payment (Date payment), date_application (Date application), payer (Payer),
+  payee (Payee), amount_cents (Amount, amount_cents/100), category (Category), subcategory (Subcategory),
+  notes (Notes), tags (Tags), payment_type (Payment type)
 - comparison selections (periods, groups, nodes) are UI-only
 
 ## App Settings DB (app_settings.db)

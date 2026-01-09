@@ -65,9 +65,12 @@ Purpose: view and maintain transactions.
 - Search: free-text input at the top; filters by payer, payee, category, subcategory, tags,
   and notes.
 - List view: scrollable table directly below search with all filtered transactions and all
-  fields as columns; tags shown as a comma-separated, lexicographically sorted list; allow
-  column hide/show; default order is date_application desc, id desc; user can sort by clicking
-  column headers in the table; no separate sort menu or pagination in MVP.
+  fields as columns; default column order is id, date_payment, date_application, payer, payee,
+  amount_cents, category, subcategory, notes, tags, payment_type; column display labels are
+  id, Date payment, Date application, Payer, Payee, Amount (amount_cents/100), Category,
+  Subcategory, Notes, Tags, Payment type; tags shown as a comma-separated, lexicographically
+  sorted list; allow column hide/show; default order is date_application desc, id desc; user
+  can sort by clicking column headers in the table; no separate sort menu or pagination in MVP.
 - Filters (P2/P3b) appear below the table: date range, payer, payee, category, subcategory,
   payment_type, tags.
 - Date range filter applies to date_application (no selector in MVP).
