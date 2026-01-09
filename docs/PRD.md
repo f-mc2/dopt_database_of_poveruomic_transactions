@@ -149,7 +149,7 @@ For each period P, group G=(A,B), node N:
 ## Non-functional Requirements
 - Streamlit multipage UI.
 - SQLite via sqlite3; WAL + foreign keys enabled per connection.
-- All operations respect repo/data safety rules in `AGENTS.md`.
+- All operations respect repo/data safety rules in `../AGENTS.md`.
 
 ## Acceptance Criteria
 - Import rejects invalid rows and inserts atomically.

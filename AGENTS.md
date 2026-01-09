@@ -4,12 +4,12 @@ This repo is developed with the Codex VS Code extension. These rules prevent dat
 privacy leaks, and unintended scope creep.
 
 ## 0) Phase rule (spec-first)
-- Until the user explicitly approves `PRD.md`, only documentation changes are allowed.
+- Until the user explicitly approves `docs/PRD.md`, only documentation changes are allowed.
 - During the spec-only phase, commits must use the `docs:` prefix.
 - During the spec-only phase, do not create or modify runtime files (`app.py`, `src/`, `pages/`,
   `schema.sql`, `Dockerfile`, `docker-compose.yml`, `requirements.txt`, etc.).
 - During spec-only, `schema.sql` is frozen; describe schema changes in docs only.
-- Current status: `PRD.md` is approved; spec-only restrictions are lifted.
+- Current status: `docs/PRD.md` is approved; spec-only restrictions are lifted.
 
 ## 1) Scope and workspace boundaries (hard rules)
 
@@ -62,10 +62,10 @@ Allowed locations for synthetic data:
 - Anything that modifies system config, SSH keys, or user directories
 
 ## 4) Mission
-Implement the MVP described in `PRD.md` as a modular, readable Streamlit app backed by SQLite.
+Implement the MVP described in `docs/PRD.md` as a modular, readable Streamlit app backed by SQLite.
 
 Priority order:
-1) Correctness + consistency with `PRD.md`
+1) Correctness + consistency with `docs/PRD.md`
 2) Simplicity + readability
 3) UI polish
 
@@ -119,7 +119,7 @@ Keep files small (<250–300 LOC each).
 
 ## 6a) Schema drift guardrail
 - After PRD approval, schema changes must be applied consistently across `schema.sql`,
-  `DATA_DICTIONARY.md`, `TECH_DESIGN.md`, and `PRD.md`. No schema drift.
+  `docs/DATA_DICTIONARY.md`, `docs/TECH_DESIGN.md`, and `docs/PRD.md`. No schema drift.
 
 ## 7) Configuration (host vs Docker)
 Host-side repo defaults to `./data/` (gitignored):
@@ -142,7 +142,7 @@ Settings DB (`app_settings.db` stored next to the active FINANCE_DB_PATH) persis
 - Theme uses Streamlit settings (light/dark/system); not stored in the settings DB.
 
 ## 8) UI behavior requirements
-- Follow `UI_BLUEPRINT.md` for patterns and page behavior.
+- Follow `docs/UI_BLUEPRINT.md` for patterns and page behavior.
 - Prefer existing DB values; creation only in explicit contexts.
 - Confirm destructive operations.
 - Transactions list supports column hide/show and ordering; date filter uses `date_application`.
@@ -165,7 +165,7 @@ Export:
 - Include both date columns and a `tags` column.
 
 ## 10) Comparison logic
-Implement exactly as specified in `PRD.md` (periods, groups, role vs matched-only,
+Implement exactly as specified in `docs/PRD.md` (periods, groups, role vs matched-only,
 slice modes, TagMatch ANY/ALL, node outputs, disambiguated OR-mode labels).
 
 ## 11) Testing policy
