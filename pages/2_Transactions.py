@@ -346,7 +346,10 @@ try:
             st.rerun()
 
     st.divider()
-    st.subheader("Edit or delete")
+    st.subheader(
+        "Edit or delete",
+        help="The selector defaults to the most recent transaction in the current filters, so the form is prefilled.",
+    )
     if not transactions:
         st.info("No transactions available for editing.")
     else:
