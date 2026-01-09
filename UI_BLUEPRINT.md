@@ -13,8 +13,8 @@
 - Missing payer/payee/payment_type are stored as NULL; NULL values are not selectable in filters.
 - Payer must always differ from payee; operations that would violate this are blocked with a warning.
 - Selected database path and configured import/export/backup directories persist across sessions
-  via a small settings SQLite DB stored in the data directory (gitignored); it remembers the
-  last-used DB and up to 3 recent DBs.
+  via a small settings SQLite DB stored alongside the active finance DB (gitignored); it
+  remembers the last-used DB and up to 3 recent DBs.
 - UI theme uses Streamlit's native setting (light/dark/system); the app does not override it.
 
 ## Widget Patterns
@@ -25,6 +25,7 @@ Single text input with suggestion list. User can pick an existing value or type 
 - Behavior: creation happens only on form submit; show a "will create new value" preview if the input
   does not match an existing value.
 - Input is normalized (trim + lowercase) before comparison and preview.
+- For nullable fields, include an explicit "(none)" choice to store NULL.
 - Use for: transaction entry fields (payer, payee, category, subcategory, payment_type) and tag creation.
 
 ### P2 Select-Existing-Only
@@ -154,6 +155,7 @@ Purpose: comparison engine with periods, groups, and node selection.
     - Mixed slices (OR mode):
       - Select up to 10 nodes across category/subcategory/tags (P2) with "All categories" and
         "All tags" options.
+      - Disambiguate labels (e.g., `category:food`, `tag:food`) to avoid collisions.
   - Subcategory nodes are category-scoped (category + subcategory pairs).
   - "All categories" and "All tags" are total slices (no category or tag filter).
   - Selected nodes are evaluated independently; UI produces one output block per node.

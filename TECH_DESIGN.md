@@ -71,8 +71,8 @@ Subcategory is hierarchical at the application level: the semantic key is (categ
 
 ### App Settings DB (app_settings.db)
 Stored alongside the active finance DB (same directory as the resolved FINANCE_DB_PATH).
-Defaults to `/data/app_settings.db` when using `/data/finance.db`, or `./data/app_settings.db`
-when using the repo data directory.
+Host default is `./data/app_settings.db`; container default is `/data/app_settings.db` when
+running in Docker. If FINANCE_DB_PATH points elsewhere, the settings DB follows it.
 
 Schema (logical):
 - `app_settings` (single row enforced by CHECK):
@@ -163,6 +163,7 @@ Settings rules:
 - Tag node: `tx` has tag.
 - All categories node: matches all transactions (no category filter).
 - All tags node: matches all transactions (no tag filter).
+UI labels are disambiguated in OR mode to avoid collisions (e.g., `category:food`, `tag:food`).
 
 ### TagMatch (AND mode)
 - ANY: transaction has at least one of the selected tags.

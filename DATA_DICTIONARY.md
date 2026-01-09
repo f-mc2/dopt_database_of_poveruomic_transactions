@@ -103,8 +103,8 @@ Many-to-many join between transactions and tags.
 
 ## App Settings DB (app_settings.db)
 Stored alongside the active finance DB (same directory as the resolved FINANCE_DB_PATH).
-Defaults to `/data/app_settings.db` when using `/data/finance.db`, or `./data/app_settings.db`
-when using the repo data directory. If FINANCE_DB_PATH points elsewhere, the settings DB follows it.
+Host default is `./data/app_settings.db`; container default is `/data/app_settings.db` when
+running in Docker. If FINANCE_DB_PATH points elsewhere, the settings DB follows it.
 Theme is controlled by Streamlit settings and is not stored in this DB.
 
 ### app_settings

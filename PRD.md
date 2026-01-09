@@ -1,7 +1,7 @@
 # PRD - Streamlit + SQLite Finance Dashboard (MVP)
 
 ## Status
-- Phase: Spec-only (no implementation changes until approved)
+- Phase: Approved (implementation changes allowed)
 - Source docs: `PRODUCT_BRIEF.md`, `UI_BLUEPRINT.md`, `DATA_DICTIONARY.md`, `TECH_DESIGN.md`
 
 ## Summary
@@ -30,6 +30,7 @@ The app runs on a desktop host and is usable on mobile browsers.
 - Prefer existing values; creation allowed only in explicit contexts.
 - Confirm destructive operations.
 - Keep UI deterministic and consistent with DB constraints.
+- Nullable P1 fields expose an explicit "(none)" choice to store NULL.
 
 ## Functional Requirements
 
@@ -106,6 +107,7 @@ The app runs on a desktop host and is usable on mobile browsers.
   - Category slices + tag filter (AND mode): up to 10 category/subcategory nodes plus tag list.
   - Mixed slices (OR mode): up to 10 nodes across category/subcategory/tags plus totals.
 - C6: "All categories" and "All tags" are total slices; nodes are evaluated independently.
+- C6a: OR-mode node labels are disambiguated (e.g., `category:food`, `tag:food`) to avoid collisions.
 - C7: TagMatch ANY/ALL applies only in category slices + tag filter mode.
 - C8: Output tables per period + node; rows are groups; columns:
   - Role mode: `#tx (inflow ∪ outflow)`, inflow, outflow, net.
@@ -138,10 +140,10 @@ For each period P, group G=(A,B), node N:
   - `#transactions` = distinct matched tx.
 
 ## Settings and Persistence
-- Settings DB: `app_settings.db` stored alongside the active finance DB (parent of FINANCE_DB_PATH);
-  default `/data/app_settings.db` when using `/data/finance.db`, or `./data/app_settings.db`
-  when using the repo data directory; stores last-used DB, recent DBs (max 3), and
-  import/export/backup dirs.
+- Settings DB: `app_settings.db` stored alongside the active finance DB (parent of FINANCE_DB_PATH).
+  Host default is `./data/app_settings.db`; container default is `/data/app_settings.db` when
+  running in Docker. If FINANCE_DB_PATH points elsewhere, the settings DB follows it. Stores
+  last-used DB, recent DBs (max 3), and import/export/backup dirs.
 - Settings DB is the only persisted UI config; no saved reports/presets.
 
 ## Non-functional Requirements
