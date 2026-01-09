@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 from src import db
 
 
-FINANCE_COLUMNS = {"payer", "payee", "payment_type", "category", "subcategory"}
+DOPT_COLUMNS = {"payer", "payee", "payment_type", "category", "subcategory"}
 
 
 def normalize_finance_value(value: str) -> str:
@@ -15,7 +15,7 @@ def normalize_finance_value(value: str) -> str:
 
 
 def list_value_counts(conn: sqlite3.Connection, column: str) -> List[Tuple[str, int]]:
-    if column not in FINANCE_COLUMNS or column == "subcategory":
+    if column not in DOPT_COLUMNS or column == "subcategory":
         raise ValueError(f"Unsupported column: {column}")
     where_clause = "WHERE {col} IS NOT NULL".format(col=column) if column != "category" else ""
     rows = db.fetch_all(
@@ -59,7 +59,7 @@ def rename_value(
     new_value: str,
     category: Optional[str] = None,
 ) -> int:
-    if column not in FINANCE_COLUMNS:
+    if column not in DOPT_COLUMNS:
         raise ValueError(f"Unsupported column: {column}")
     if column == "subcategory":
         if not category:
@@ -84,7 +84,7 @@ def clear_value(
     value: str,
     category: Optional[str] = None,
 ) -> int:
-    if column not in FINANCE_COLUMNS:
+    if column not in DOPT_COLUMNS:
         raise ValueError(f"Unsupported column: {column}")
     if column == "category":
         raise ValueError("Category cannot be cleared")

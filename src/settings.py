@@ -12,7 +12,7 @@ REPO_DATA_DIR = REPO_ROOT / "data"
 
 
 def _default_db_path() -> str:
-    env_path = os.environ.get("FINANCE_DB_PATH")
+    env_path = os.environ.get("DOPT_DB_PATH")
     if env_path:
         return env_path
     return str(REPO_DATA_DIR / "finance.db")
@@ -28,9 +28,9 @@ def _default_dir(env_name: str, subdir: str) -> str:
     return str(REPO_DATA_DIR / subdir)
 
 
-DEFAULT_IMPORT_DIR = _default_dir("FINANCE_CSV_IMPORT_DIR", "csv_import")
-DEFAULT_EXPORT_DIR = _default_dir("FINANCE_CSV_EXPORT_DIR", "csv_export")
-DEFAULT_BACKUP_DIR = _default_dir("FINANCE_DB_BACKUP_DIR", "db_backup")
+DEFAULT_IMPORT_DIR = _default_dir("DOPT_CSV_IMPORT_DIR", "csv_import")
+DEFAULT_EXPORT_DIR = _default_dir("DOPT_CSV_EXPORT_DIR", "csv_export")
+DEFAULT_BACKUP_DIR = _default_dir("DOPT_DB_BACKUP_DIR", "db_backup")
 
 
 def settings_db_path(finance_db_path: Optional[str] = None) -> str:

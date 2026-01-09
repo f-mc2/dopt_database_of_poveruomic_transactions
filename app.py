@@ -97,7 +97,7 @@ if st.session_state.get("db_switch_notice"):
     st.info("Session reset after switching databases.")
     st.session_state.db_switch_notice = False
 
-st.caption(f"FINANCE_DB_PATH default: {settings.DEFAULT_DB_PATH}")
+st.caption(f"DOPT_DB_PATH default: {settings.DEFAULT_DB_PATH}")
 
 if current_path.exists() and current_path.is_dir():
     st.error("The database path points to a directory. Please use a file path.")
