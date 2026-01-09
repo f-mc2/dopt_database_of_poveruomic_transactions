@@ -1,11 +1,10 @@
 import datetime as dt
 from typing import Dict, List, Optional, Tuple
 
-import pandas as pd
 import sqlite3
 import streamlit as st
 
-from src import amounts, comparison_engine, db, plotting, queries, session_state, tags, ui_widgets
+from src import comparison_engine, db, plotting, queries, session_state, tags, ui_widgets
 from src.types import Group, Node, Period
 
 session_state.ensure_db_session_state()
@@ -374,43 +373,6 @@ try:
             period_order = results["period_order"]
             node_order = results["node_order"]
             stored_mode = results["mode"]
-
-            for period_label in period_order:
-                st.markdown(f"### {period_label}")
-                period_df = df[df["period_label"] == period_label]
-                for node_label in node_order:
-                    node_df = period_df[period_df["node_label"] == node_label]
-                    if node_df.empty:
-                        continue
-                    st.markdown(f"#### {node_label}")
-                    table = node_df.set_index("group_label")
-                    if stored_mode == "matched_only":
-                        display = pd.DataFrame(
-                            {
-                                "#transactions": table["tx_count"].astype(int),
-                                "matched flow": table["matched_flow_cents"].apply(
-                                    lambda v: amounts.format_cents(int(v))
-                                ),
-                            }
-                        )
-                    else:
-                        display = pd.DataFrame(
-                            {
-                                "#tx (inflow ∪ outflow)": table["tx_count"].astype(int),
-                                "inflow": table["inflow_cents"].apply(
-                                    lambda v: amounts.format_cents(int(v))
-                                ),
-                                "outflow": table["outflow_cents"].apply(
-                                    lambda v: amounts.format_cents(int(v))
-                                ),
-                                "net": table["net_cents"].apply(
-                                    lambda v: amounts.format_cents(int(v))
-                                ),
-                            }
-                        )
-                    st.dataframe(display, width="stretch")
-
-            st.divider()
             if stored_mode == "matched_only":
                 metric = "matched_flow_cents"
             else:
@@ -429,7 +391,7 @@ try:
                 if not node_order:
                     continue
                 columns = st.columns(len(node_order))
-                for col, node_label in zip(columns, node_order):
+                for idx, (col, node_label) in enumerate(zip(columns, node_order)):
                     with col:
                         st.caption(node_label)
                         chart = plotting.node_bar_chart(
@@ -439,6 +401,7 @@ try:
                             value_field="metric_value",
                             period_order=period_order,
                             value_title=metric_label,
+                            show_legend=idx == 0,
                         )
                         st.altair_chart(chart, width="stretch")
 
