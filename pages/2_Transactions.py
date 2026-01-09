@@ -18,6 +18,34 @@ if not st.session_state.get("db_ready"):
 
 DATE_INPUT_MIN = dt.date(1900, 1, 1)
 DATE_INPUT_MAX = dt.date(2100, 12, 31)
+COLUMN_ORDER = [
+    "id",
+    "date_payment",
+    "date_application",
+    "payer",
+    "payee",
+    "amount_cents",
+    "category",
+    "subcategory",
+    "notes",
+    "tags",
+    "payment_type",
+]
+COLUMN_LABELS = {
+    "id": "id",
+    "date_payment": "Date payment",
+    "date_application": "Date application",
+    "payer": "Payer",
+    "payee": "Payee",
+    "amount_cents": "Amount (amount_cents/100)",
+    "category": "Category",
+    "subcategory": "Subcategory",
+    "notes": "Notes",
+    "tags": "Tags",
+    "payment_type": "Payment type",
+}
+LEGACY_COLUMN_MAP = {field: COLUMN_LABELS[field] for field in COLUMN_ORDER}
+LEGACY_COLUMN_MAP["amount"] = COLUMN_LABELS["amount_cents"]
 
 
 def _normalize_optional(value: Optional[str], lower: bool = True) -> Optional[str]:
@@ -52,19 +80,18 @@ try:
         key="tx_search",
         placeholder="payer, payee, category, subcategory, tags, notes",
     )
-    all_columns = [
-        "id",
-        "date_payment",
-        "date_application",
-        "amount",
-        "payer",
-        "payee",
-        "payment_type",
-        "category",
-        "subcategory",
-        "tags",
-        "notes",
-    ]
+    all_columns = [COLUMN_LABELS[field] for field in COLUMN_ORDER]
+    if "tx_visible_columns" in st.session_state:
+        selected = st.session_state.get("tx_visible_columns") or []
+        normalized = set()
+        for col in selected:
+            if col in all_columns:
+                normalized.add(col)
+            elif col in LEGACY_COLUMN_MAP:
+                normalized.add(LEGACY_COLUMN_MAP[col])
+        st.session_state["tx_visible_columns"] = (
+            [col for col in all_columns if col in normalized] or list(all_columns)
+        )
     visible_columns = st.multiselect(
         "Visible columns",
         options=all_columns,
@@ -171,17 +198,19 @@ try:
             for row in transactions:
                 display_rows.append(
                     {
-                        "id": row["id"],
-                        "date_payment": row["date_payment"],
-                        "date_application": row["date_application"],
-                        "amount": amounts.format_cents(int(row["amount_cents"])),
-                        "payer": row["payer"] or "",
-                        "payee": row["payee"] or "",
-                        "payment_type": row["payment_type"] or "",
-                        "category": row["category"],
-                        "subcategory": row["subcategory"] or "",
-                        "tags": row["tags"] or "",
-                        "notes": row["notes"] or "",
+                        COLUMN_LABELS["id"]: row["id"],
+                        COLUMN_LABELS["date_payment"]: row["date_payment"],
+                        COLUMN_LABELS["date_application"]: row["date_application"],
+                        COLUMN_LABELS["payer"]: row["payer"] or "",
+                        COLUMN_LABELS["payee"]: row["payee"] or "",
+                        COLUMN_LABELS["amount_cents"]: amounts.format_cents(
+                            int(row["amount_cents"])
+                        ),
+                        COLUMN_LABELS["category"]: row["category"],
+                        COLUMN_LABELS["subcategory"]: row["subcategory"] or "",
+                        COLUMN_LABELS["notes"]: row["notes"] or "",
+                        COLUMN_LABELS["tags"]: row["tags"] or "",
+                        COLUMN_LABELS["payment_type"]: row["payment_type"] or "",
                     }
                 )
 
@@ -192,7 +221,7 @@ try:
             display_columns = ordered_columns or list(df.columns)
             table_width = max(900, len(display_columns) * 140)
             st.dataframe(df, width=table_width, height=520)
-            st.caption("Default order is date_application desc; click column headers to sort.")
+            st.caption("Default order is date_application desc, id desc; click column headers to sort.")
 
     st.divider()
     st.subheader("Add transaction")
