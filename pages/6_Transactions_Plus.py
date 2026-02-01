@@ -26,8 +26,6 @@ if not st.session_state.get("db_ready"):
 DATE_INPUT_MIN = dt.date(1900, 1, 1)
 DATE_INPUT_MAX = dt.date(2100, 12, 31)
 NONE_SENTINEL = "(none)"
-SELECT_COLUMN = "__select__"
-SELECT_LABEL = "Select"
 COLUMN_ORDER = [
     "id",
     "date_payment",
@@ -41,7 +39,6 @@ COLUMN_ORDER = [
     "tags",
     "payment_type",
 ]
-EDITOR_COLUMN_ORDER = [SELECT_COLUMN] + COLUMN_ORDER
 COLUMN_LABELS = {
     "id": "id",
     "date_payment": "Date payment",
@@ -195,7 +192,6 @@ def _render_add_option_helper(options: Dict[str, List[str]]) -> None:
 
 def _editor_row(row: sqlite3.Row) -> Dict[str, object]:
     return {
-        SELECT_COLUMN: False,
         "id": int(row["id"]),
         "date_payment": row["date_payment"],
         "date_application": row["date_application"],
@@ -439,16 +435,14 @@ try:
             display_rows = [_editor_row(row) for row in transactions]
             base_df = pd.DataFrame(display_rows)
             if not base_df.empty:
-                base_df = base_df[EDITOR_COLUMN_ORDER]
+                base_df = base_df[COLUMN_ORDER]
 
             visible_fields = [
                 LABEL_TO_COLUMN[label]
                 for label in visible_columns
                 if label in LABEL_TO_COLUMN
             ]
-            display_order = [SELECT_COLUMN] + [
-                field for field in COLUMN_ORDER if field in visible_fields
-            ]
+            display_order = [field for field in COLUMN_ORDER if field in visible_fields]
 
             filter_sig = _filter_signature(filters)
             reset_needed = False
@@ -462,11 +456,11 @@ try:
                 st.session_state["txp_original_df"] = base_df
                 st.session_state["txp_editor_df"] = base_df.copy(deep=True)
                 st.session_state["txp_force_reset"] = False
+                st.session_state["txp_bulk_selected_ids"] = []
                 st.session_state["txp_editor_key"] = st.session_state.get("txp_editor_key", 0) + 1
             editor_df = st.session_state.get("txp_editor_df", base_df)
 
             column_config = {
-                SELECT_COLUMN: st.column_config.CheckboxColumn(SELECT_LABEL),
                 "id": st.column_config.NumberColumn(COLUMN_LABELS["id"], disabled=True),
                 "date_payment": st.column_config.TextColumn(COLUMN_LABELS["date_payment"]),
                 "date_application": st.column_config.TextColumn(
@@ -509,7 +503,7 @@ try:
                 column_order=display_order,
                 hide_index=True,
                 height=editor_height,
-                use_container_width=True,
+                width="stretch",
                 disabled=["id"],
             )
             st.session_state["txp_editor_df"] = edited_df
@@ -523,13 +517,29 @@ try:
             )
 
             with st.expander("Bulk edit selected rows", expanded=False):
-                selected_ids = []
-                if SELECT_COLUMN in edited_df.columns and "id" in edited_df.columns:
-                    selected_ids = (
-                        edited_df.loc[edited_df[SELECT_COLUMN] == True, "id"]
-                        .astype(int)
-                        .tolist()
+                tx_map = {int(row["id"]): row for row in transactions}
+                tx_id_options = list(tx_map.keys())
+                selected_ids = st.multiselect(
+                    "Selected transactions",
+                    options=tx_id_options,
+                    format_func=lambda value: (
+                        f"{value} • pay {tx_map[value]['date_payment']} • app "
+                        f"{tx_map[value]['date_application']} • "
+                        f"{amounts.format_cents(int(tx_map[value]['amount_cents']))}"
                     )
+                    if value in tx_map
+                    else str(value),
+                    key="txp_bulk_selected_ids",
+                )
+                select_col1, select_col2 = st.columns(2)
+                with select_col1:
+                    if st.button("Select all visible", key="txp_bulk_select_all"):
+                        st.session_state["txp_bulk_selected_ids"] = tx_id_options
+                        st.rerun()
+                with select_col2:
+                    if st.button("Clear selection", key="txp_bulk_select_none"):
+                        st.session_state["txp_bulk_selected_ids"] = []
+                        st.rerun()
                 st.caption(f"Selected rows: {len(selected_ids)}")
 
                 bulk_fields = {
@@ -654,8 +664,8 @@ try:
                             ] * int(selected_mask.sum())
                         else:
                             updated_df.loc[selected_mask, bulk_field] = bulk_value
-                        if clear_selection and SELECT_COLUMN in updated_df.columns:
-                            updated_df.loc[selected_mask, SELECT_COLUMN] = False
+                        if clear_selection:
+                            st.session_state["txp_bulk_selected_ids"] = []
                         st.session_state["txp_editor_df"] = updated_df
                         st.session_state["txp_editor_key"] = (
                             st.session_state.get("txp_editor_key", 0) + 1
