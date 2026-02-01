@@ -9,6 +9,7 @@ _NAV_ITEMS = (
     ("app.py", "HOME"),
     ("pages/1_Tutorial.py", "Tutorial"),
     ("pages/2_Transactions.py", "Transactions"),
+    ("pages/6_Transactions_Plus.py", "Transactions-plus"),
     ("pages/3_Import_Export.py", "Import Export"),
     ("pages/4_Manage_Values.py", "Manage Values"),
     ("pages/5_Compare.py", "Compare"),
