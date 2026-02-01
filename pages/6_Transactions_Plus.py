@@ -237,13 +237,6 @@ def _filter_signature(filters: Dict[str, object]) -> Tuple[object, ...]:
     )
 
 
-def _ensure_selected_ids(df: pd.DataFrame, selected_ids: List[int]) -> List[int]:
-    if df.empty:
-        return []
-    valid_ids = set(int(value) for value in df["id"].tolist() if value is not None)
-    return [tx_id for tx_id in selected_ids if tx_id in valid_ids]
-
-
 def _build_payload(
     row: pd.Series,
     subcategory_map: Dict[str, List[str]],
@@ -470,14 +463,7 @@ try:
                 st.session_state["txp_editor_df"] = base_df.copy(deep=True)
                 st.session_state["txp_force_reset"] = False
                 st.session_state["txp_editor_key"] = st.session_state.get("txp_editor_key", 0) + 1
-                st.session_state["txp_selected_ids"] = []
-
             editor_df = st.session_state.get("txp_editor_df", base_df)
-            selected_ids_state = st.session_state.get("txp_selected_ids", [])
-            selected_ids_state = _ensure_selected_ids(editor_df, selected_ids_state)
-            if SELECT_COLUMN in editor_df.columns and "id" in editor_df.columns:
-                editor_df = editor_df.copy(deep=True)
-                editor_df[SELECT_COLUMN] = editor_df["id"].isin(selected_ids_state)
 
             column_config = {
                 SELECT_COLUMN: st.column_config.CheckboxColumn(SELECT_LABEL),
@@ -526,13 +512,6 @@ try:
                 use_container_width=True,
                 disabled=["id"],
             )
-            if SELECT_COLUMN in edited_df.columns and "id" in edited_df.columns:
-                selected_ids_state = (
-                    edited_df.loc[edited_df[SELECT_COLUMN] == True, "id"]
-                    .astype(int)
-                    .tolist()
-                )
-                st.session_state["txp_selected_ids"] = selected_ids_state
             st.session_state["txp_editor_df"] = edited_df
 
             st.caption(
@@ -677,7 +656,6 @@ try:
                             updated_df.loc[selected_mask, bulk_field] = bulk_value
                         if clear_selection and SELECT_COLUMN in updated_df.columns:
                             updated_df.loc[selected_mask, SELECT_COLUMN] = False
-                            st.session_state["txp_selected_ids"] = []
                         st.session_state["txp_editor_df"] = updated_df
                         st.session_state["txp_editor_key"] = (
                             st.session_state.get("txp_editor_key", 0) + 1
