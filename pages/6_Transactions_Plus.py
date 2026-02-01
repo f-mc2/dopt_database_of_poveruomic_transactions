@@ -237,6 +237,13 @@ def _filter_signature(filters: Dict[str, object]) -> Tuple[object, ...]:
     )
 
 
+def _ensure_selected_ids(df: pd.DataFrame, selected_ids: List[int]) -> List[int]:
+    if df.empty:
+        return []
+    valid_ids = set(int(value) for value in df["id"].tolist() if value is not None)
+    return [tx_id for tx_id in selected_ids if tx_id in valid_ids]
+
+
 def _build_payload(
     row: pd.Series,
     subcategory_map: Dict[str, List[str]],
@@ -463,8 +470,14 @@ try:
                 st.session_state["txp_editor_df"] = base_df.copy(deep=True)
                 st.session_state["txp_force_reset"] = False
                 st.session_state["txp_editor_key"] = st.session_state.get("txp_editor_key", 0) + 1
+                st.session_state["txp_selected_ids"] = []
 
             editor_df = st.session_state.get("txp_editor_df", base_df)
+            selected_ids_state = st.session_state.get("txp_selected_ids", [])
+            selected_ids_state = _ensure_selected_ids(editor_df, selected_ids_state)
+            if SELECT_COLUMN in editor_df.columns and "id" in editor_df.columns:
+                editor_df = editor_df.copy(deep=True)
+                editor_df[SELECT_COLUMN] = editor_df["id"].isin(selected_ids_state)
 
             column_config = {
                 SELECT_COLUMN: st.column_config.CheckboxColumn(SELECT_LABEL),
@@ -513,6 +526,13 @@ try:
                 use_container_width=True,
                 disabled=["id"],
             )
+            if SELECT_COLUMN in edited_df.columns and "id" in edited_df.columns:
+                selected_ids_state = (
+                    edited_df.loc[edited_df[SELECT_COLUMN] == True, "id"]
+                    .astype(int)
+                    .tolist()
+                )
+                st.session_state["txp_selected_ids"] = selected_ids_state
             st.session_state["txp_editor_df"] = edited_df
 
             st.caption(
@@ -534,6 +554,7 @@ try:
                 st.caption(f"Selected rows: {len(selected_ids)}")
 
                 bulk_fields = {
+                    "category_subcategory": "Category + subcategory",
                     "payer": "Payer",
                     "payee": "Payee",
                     "category": "Category",
@@ -554,7 +575,28 @@ try:
 
                 bulk_value: object = None
                 tag_values: List[str] = []
-                if bulk_field in {"payer", "payee", "subcategory", "payment_type"}:
+                if bulk_field == "category_subcategory":
+                    bulk_category = st.selectbox(
+                        "Category",
+                        options=editor_options["category"],
+                        key="txp_bulk_value_category_combo",
+                    )
+                    subcategory_for_category = (
+                        queries.get_subcategories_for_category(conn, bulk_category)
+                        if bulk_category
+                        else []
+                    )
+                    subcategory_for_category = _with_none(subcategory_for_category)
+                    bulk_subcategory = st.selectbox(
+                        "Subcategory",
+                        options=subcategory_for_category,
+                        key="txp_bulk_value_subcategory_combo",
+                    )
+                    bulk_value = {
+                        "category": bulk_category,
+                        "subcategory": bulk_subcategory,
+                    }
+                elif bulk_field in {"payer", "payee", "subcategory", "payment_type"}:
                     bulk_value = st.selectbox(
                         "Value",
                         options=editor_options[bulk_field],
@@ -620,15 +662,22 @@ try:
                         st.warning("Select at least one row to apply changes.")
                     else:
                         updated_df = edited_df.copy(deep=True)
-                        updated_df.loc[
-                            updated_df["id"].isin(selected_ids),
-                            bulk_field,
-                        ] = bulk_value
+                        selected_mask = updated_df["id"].isin(selected_ids)
+                        if bulk_field == "category_subcategory":
+                            updated_df.loc[selected_mask, "category"] = bulk_value["category"]
+                            updated_df.loc[selected_mask, "subcategory"] = bulk_value[
+                                "subcategory"
+                            ]
+                        elif bulk_field == "tags":
+                            tag_payload = list(bulk_value)
+                            updated_df.loc[selected_mask, "tags"] = [
+                                tag_payload
+                            ] * int(selected_mask.sum())
+                        else:
+                            updated_df.loc[selected_mask, bulk_field] = bulk_value
                         if clear_selection and SELECT_COLUMN in updated_df.columns:
-                            updated_df.loc[
-                                updated_df["id"].isin(selected_ids),
-                                SELECT_COLUMN,
-                            ] = False
+                            updated_df.loc[selected_mask, SELECT_COLUMN] = False
+                            st.session_state["txp_selected_ids"] = []
                         st.session_state["txp_editor_df"] = updated_df
                         st.session_state["txp_editor_key"] = (
                             st.session_state.get("txp_editor_key", 0) + 1
