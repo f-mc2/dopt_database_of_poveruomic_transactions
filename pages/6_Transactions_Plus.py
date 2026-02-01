@@ -97,14 +97,12 @@ def _coerce_date(value: object, label: str) -> Tuple[Optional[str], Optional[str
 def _parse_tags_cell(value: object) -> Tuple[List[str], Optional[str]]:
     if value is None:
         return [], None
-    if isinstance(value, float) and pd.isna(value):
-        return [], None
     if isinstance(value, str):
         try:
             return tags.parse_tags(value), None
         except ValueError as exc:
             return [], str(exc)
-    if isinstance(value, Iterable):
+    if isinstance(value, (list, tuple, set)):
         normalized: List[str] = []
         seen = set()
         for item in value:
@@ -122,6 +120,8 @@ def _parse_tags_cell(value: object) -> Tuple[List[str], Optional[str]]:
             seen.add(tag_value)
             normalized.append(tag_value)
         return normalized, None
+    if pd.isna(value):
+        return [], None
     return [], "Tags must be a list"
 
 
