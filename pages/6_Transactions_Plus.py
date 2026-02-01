@@ -26,6 +26,8 @@ if not st.session_state.get("db_ready"):
 DATE_INPUT_MIN = dt.date(1900, 1, 1)
 DATE_INPUT_MAX = dt.date(2100, 12, 31)
 NONE_SENTINEL = "(none)"
+SELECT_COLUMN = "__select__"
+SELECT_LABEL = "Select"
 COLUMN_ORDER = [
     "id",
     "date_payment",
@@ -39,6 +41,7 @@ COLUMN_ORDER = [
     "tags",
     "payment_type",
 ]
+EDITOR_COLUMN_ORDER = [SELECT_COLUMN] + COLUMN_ORDER
 COLUMN_LABELS = {
     "id": "id",
     "date_payment": "Date payment",
@@ -192,6 +195,7 @@ def _render_add_option_helper(options: Dict[str, List[str]]) -> None:
 
 def _editor_row(row: sqlite3.Row) -> Dict[str, object]:
     return {
+        SELECT_COLUMN: False,
         "id": int(row["id"]),
         "date_payment": row["date_payment"],
         "date_application": row["date_application"],
@@ -435,16 +439,16 @@ try:
             display_rows = [_editor_row(row) for row in transactions]
             base_df = pd.DataFrame(display_rows)
             if not base_df.empty:
-                base_df = base_df[COLUMN_ORDER]
+                base_df = base_df[EDITOR_COLUMN_ORDER]
 
             visible_fields = [
                 LABEL_TO_COLUMN[label]
                 for label in visible_columns
                 if label in LABEL_TO_COLUMN
             ]
-            display_order = [
+            display_order = [SELECT_COLUMN] + [
                 field for field in COLUMN_ORDER if field in visible_fields
-            ] or COLUMN_ORDER
+            ]
 
             filter_sig = _filter_signature(filters)
             reset_needed = False
@@ -463,6 +467,7 @@ try:
             editor_df = st.session_state.get("txp_editor_df", base_df)
 
             column_config = {
+                SELECT_COLUMN: st.column_config.CheckboxColumn(SELECT_LABEL),
                 "id": st.column_config.NumberColumn(COLUMN_LABELS["id"], disabled=True),
                 "date_payment": st.column_config.TextColumn(COLUMN_LABELS["date_payment"]),
                 "date_application": st.column_config.TextColumn(
@@ -517,6 +522,118 @@ try:
             st.caption(
                 "Default order is date_application desc, id desc; click column headers to sort."
             )
+
+            with st.expander("Bulk edit selected rows", expanded=False):
+                selected_ids = []
+                if SELECT_COLUMN in edited_df.columns and "id" in edited_df.columns:
+                    selected_ids = (
+                        edited_df.loc[edited_df[SELECT_COLUMN] == True, "id"]
+                        .astype(int)
+                        .tolist()
+                    )
+                st.caption(f"Selected rows: {len(selected_ids)}")
+
+                bulk_fields = {
+                    "payer": "Payer",
+                    "payee": "Payee",
+                    "category": "Category",
+                    "subcategory": "Subcategory",
+                    "payment_type": "Payment type",
+                    "date_payment": "Date payment",
+                    "date_application": "Date application",
+                    "amount_cents": "Amount",
+                    "notes": "Notes",
+                    "tags": "Tags",
+                }
+                bulk_field = st.selectbox(
+                    "Field",
+                    options=list(bulk_fields.keys()),
+                    format_func=lambda key: bulk_fields[key],
+                    key="txp_bulk_field",
+                )
+
+                bulk_value: object = None
+                tag_values: List[str] = []
+                if bulk_field in {"payer", "payee", "subcategory", "payment_type"}:
+                    bulk_value = st.selectbox(
+                        "Value",
+                        options=editor_options[bulk_field],
+                        key="txp_bulk_value_select",
+                    )
+                elif bulk_field == "category":
+                    bulk_value = st.selectbox(
+                        "Value",
+                        options=editor_options["category"],
+                        key="txp_bulk_value_category",
+                    )
+                elif bulk_field in {"date_payment", "date_application"}:
+                    bulk_date = st.date_input(
+                        "Value",
+                        value=today,
+                        min_value=DATE_INPUT_MIN,
+                        max_value=DATE_INPUT_MAX,
+                        key="txp_bulk_value_date",
+                    )
+                    bulk_value = bulk_date.isoformat()
+                elif bulk_field == "amount_cents":
+                    bulk_value = st.text_input(
+                        "Value (amount)",
+                        value="0.00",
+                        key="txp_bulk_value_amount",
+                    )
+                elif bulk_field == "notes":
+                    bulk_value = st.text_area(
+                        "Value (notes)",
+                        value="",
+                        key="txp_bulk_value_notes",
+                    )
+                elif bulk_field == "tags":
+                    tag_values = st.multiselect(
+                        "Tags",
+                        options=tag_options,
+                        default=[],
+                        key="txp_bulk_value_tags",
+                    )
+                    new_tags_raw = st.text_input(
+                        "Add new tags (comma-separated)",
+                        key="txp_bulk_value_tags_new",
+                    )
+                    if new_tags_raw.strip():
+                        try:
+                            new_tags = tags.parse_tags(new_tags_raw)
+                        except ValueError as exc:
+                            st.error(str(exc))
+                            new_tags = []
+                        for tag_value in new_tags:
+                            if tag_value not in tag_values:
+                                tag_values.append(tag_value)
+                    bulk_value = tag_values
+                    st.caption("Applying an empty tag list will clear tags for selected rows.")
+
+                clear_selection = st.checkbox(
+                    "Clear selection after apply",
+                    value=True,
+                    key="txp_bulk_clear_selection",
+                )
+                if st.button("Apply to selected rows", key="txp_bulk_apply"):
+                    if not selected_ids:
+                        st.warning("Select at least one row to apply changes.")
+                    else:
+                        updated_df = edited_df.copy(deep=True)
+                        updated_df.loc[
+                            updated_df["id"].isin(selected_ids),
+                            bulk_field,
+                        ] = bulk_value
+                        if clear_selection and SELECT_COLUMN in updated_df.columns:
+                            updated_df.loc[
+                                updated_df["id"].isin(selected_ids),
+                                SELECT_COLUMN,
+                            ] = False
+                        st.session_state["txp_editor_df"] = updated_df
+                        st.session_state["txp_editor_key"] = (
+                            st.session_state.get("txp_editor_key", 0) + 1
+                        )
+                        st.rerun()
 
             action_col1, action_col2 = st.columns([1, 1])
             with action_col1:
