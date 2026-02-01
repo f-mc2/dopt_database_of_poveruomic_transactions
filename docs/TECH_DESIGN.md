@@ -19,6 +19,53 @@ It follows PRODUCT_BRIEF.md, UI_BLUEPRINT.md, and DATA_DICTIONARY.md and avoids 
   - `plotting.py`: Altair charts for comparison outputs.
   - `ui_widgets.py`: P1/P2/P3 widget helpers.
 
+## Transactions-plus (Inline Editor)
+
+### UI + State
+- Implement a separate page (e.g., `pages/6_Transactions_Plus.py`) to avoid regressions in
+  the existing Transactions page.
+- Use `st.data_editor` for inline edits with fixed rows to preserve column sorting.
+- Maintain:
+  - `original_df`: the filtered dataset as loaded from the DB.
+  - `edited_df`: the user-edited dataset returned by `st.data_editor`.
+  - `editor_key`: a stable key for reset/refresh flows.
+- Provide explicit controls:
+  - Save changes (all-or-nothing).
+  - Discard changes (reset to `original_df`).
+- Add helper inputs to inject new values into dropdown options for payer/payee/category/
+  subcategory/payment_type before saving.
+
+### Column Configuration
+- `id` column is read-only.
+- Use `SelectboxColumn` for payer/payee/category/subcategory/payment_type to provide
+  suggestions from existing DB values.
+- Use `MultiselectColumn` for tags; allow new options; normalize and persist on save.
+- Subcategory dropdown is global (not row-scoped); validate that each row’s subcategory
+  matches its category during save and surface errors per row.
+
+### Diff + Validation Pipeline
+- Compute a diff between `edited_df` and `original_df` to identify changed rows.
+- Validate each changed row:
+  - amount parsing to `amount_cents`
+  - normalized finance fields (lower/trim)
+  - payer/payee invariants
+  - date parsing and calendar validity
+  - subcategory/category coherence
+  - tags normalized and comma-free
+- If any row fails, block save and show row-level errors; no DB writes occur.
+
+### Persistence
+- All-or-nothing save:
+  - Wrap all updates in a single transaction.
+  - For each changed row: update `transactions`, then call `tags.set_transaction_tags`.
+  - Commit only if every changed row is valid and succeeds.
+- After save, re-query using the active filters and refresh the table; rows that no longer
+  match filters disappear.
+
+### Add/Edit/Delete Forms
+- Keep existing single-transaction forms below the editor for safer operations and to avoid
+  `st.data_editor` row add/remove limitations.
+
 ## Databases
 
 ### Finance DB (finance.db)

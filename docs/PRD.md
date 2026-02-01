@@ -11,14 +11,16 @@ The app runs on a desktop host and is usable on mobile browsers.
 
 ## Goals
 1. Strict, atomic CSV import/export for transactions (semicolon-separated).
-2. One-at-a-time transaction add/edit/delete with normalized tags.
-3. Comparison analytics with periods, groups, and node slices.
-4. Bulk rename/merge of reference values (payer, payee, category, subcategory, payment_type, tags).
-5. WAL-safe database backup.
+2. One-at-a-time transaction add/edit/delete with normalized tags (core Transactions page).
+3. Transactions-plus allows bulk inline edits with explicit save and validation.
+4. Comparison analytics with periods, groups, and node slices.
+5. Bulk rename/merge of reference values (payer, payee, category, subcategory, payment_type, tags).
+6. WAL-safe database backup.
 
 ## Non-goals
 - Multi-user support, cloud sync, budgets, forecasting, recurring transactions.
-- Bulk edit/delete of transactions (except controlled Manage Values operations).
+- Bulk delete of transactions (except controlled Manage Values operations).
+- Bulk transaction edits are only allowed in the Transactions-plus page.
 - Multi-currency.
 
 ## Personas and Context
@@ -69,6 +71,29 @@ The app runs on a desktop host and is usable on mobile browsers.
   category, subcategory, tags, or notes (combined with other filters).
 - T13: Filter controls (date range, payer, payee, category, subcategory, payment_type, tags,
   missing-value toggles) render below the table.
+
+### Transactions-plus (Experimental)
+- TP1: Layout mirrors Transactions: search input, visible-column selector, editable table,
+  then filters below the table.
+- TP2: Table uses a scrollable editor with a fixed header; show about 15 rows in view and
+  allow scrolling through all matching transactions.
+- TP3: Column sorting via header clicks must remain available.
+- TP4: All fields are editable except `id`.
+- TP5: Bulk edits across multiple (including non-contiguous) rows are allowed.
+- TP6: Add/edit/delete single-transaction forms remain available on the page (same behavior
+  as Transactions); no add/remove rows directly in the table.
+- TP7: Save is explicit and all-or-nothing: if any edited row is invalid, no changes are
+  written to the DB and errors are shown.
+- TP8: Suggestions for payer/payee/category/subcategory/payment_type use existing DB values
+  (dropdown filtering while typing). New values can be added via helper inputs that inject
+  into the suggestion lists before saving.
+- TP9: Subcategory suggestions are not row-scoped in the grid; allow selection from all
+  subcategories, then validate on save that each row’s subcategory matches its category.
+  Provide an inline explanation near the table.
+- TP10: Tags are edited with a multi-select control; new tags can be added via the control,
+  normalized, and saved to `tags` + `transaction_tags`.
+- TP11: Edits respect active filters; on save, the table refreshes from the DB and rows
+  that no longer match filters disappear.
 
 ### Import/Export/Backup
 - IE1: Import semicolon-separated CSV with strict validation and atomic insert.
@@ -159,6 +184,8 @@ For each period P, group G=(A,B), node N:
 - Payer/payee invariants are enforced by DB and preflight UI.
 - Transactions list supports column hide/show, table sorting, and shows all filtered transactions;
   date filter uses `date_application`.
+- Transactions-plus supports bulk inline edits with explicit save, all-or-nothing validation,
+  and retains column sorting; add/delete remains via forms.
 - Comparison outputs match role vs matched-only semantics and node slicing.
 - Backup uses SQLite online backup API to create consistent snapshots.
 

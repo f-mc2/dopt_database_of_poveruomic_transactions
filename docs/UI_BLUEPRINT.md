@@ -5,8 +5,9 @@
 - Desktop-first layout with mobile-safe stacking.
 - Each page sets Streamlit layout to wide via set_page_config.
 - Destructive actions always require explicit confirmation.
-- No arbitrary bulk edit/delete of transactions; only one-at-a-time edits.
-  Controlled bulk operations are limited to Manage Values rename/merge/delete.
+- No arbitrary bulk delete of transactions; only one-at-a-time deletes.
+  Transactions-plus allows bulk edits with explicit save; controlled bulk operations
+  are otherwise limited to Manage Values rename/merge/delete.
 - Finance-domain values are stored in lowercase; notes preserve case. Search is case-insensitive.
 - Use existing values whenever possible; creation is allowed only in explicit contexts
   (transaction entry, tag assignment, and Manage Values rename/merge).
@@ -89,6 +90,31 @@ Purpose: view and maintain transactions.
   - If only one date is provided, auto-copy it into the other field before save.
 - Edit transaction (one at a time): same fields as add.
 - Delete transaction: confirmation required.
+
+### Transactions-plus (Experimental)
+Purpose: inline editing with bulk saves while keeping the original Transactions workflow intact.
+- Layout:
+  - Search input at the top.
+  - Visible columns selector directly above the table.
+  - Editable table below (approx. 15 visible rows; scroll to view all results).
+  - Filters appear below the table (same filters as Transactions).
+- Table behavior:
+  - Column sorting via header clicks remains enabled.
+  - All fields editable except `id`.
+  - No row add/remove in the table (add/delete via forms only).
+  - Bulk edits across non-contiguous rows are allowed.
+  - Save changes is explicit and all-or-nothing; invalid rows block the save.
+  - Provide a short note near the table explaining that subcategory suggestions are not
+    row-scoped; selections are validated on save (must match the row’s category).
+- Suggestions + creation:
+  - payer/payee/category/subcategory/payment_type use dropdown suggestions from existing values.
+  - A small “add new value” helper lets users add a new option to the dropdown list before saving.
+- Tags:
+  - Use a multiselect-style editor in the table; allow new tags; normalize on save.
+  - Tags shown as a list in the table editor.
+- Forms:
+  - Keep single-transaction Add/Edit/Delete forms below for safe one-at-a-time operations.
+  - Delete requires confirmation (checkbox).
 
 ### Import/Export
 Purpose: CSV import, export, and backup.

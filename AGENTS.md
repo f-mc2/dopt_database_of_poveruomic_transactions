@@ -75,7 +75,8 @@ Do not invent features.
 - Streamlit multipage UI.
 - SQLite via Python `sqlite3` module.
 - No saved analytics presets or reports beyond DB content (settings DB allowed for UI config).
-- Edit/delete transactions one at a time (no bulk transaction edits).
+- Edit/delete transactions one at a time on the main Transactions page.
+- Transactions-plus allows bulk edits with an explicit save action (no bulk delete).
 - All SQL uses parameter placeholders (`?`), never string formatting.
 - Use WAL + foreign keys:
   - `PRAGMA journal_mode=WAL;`

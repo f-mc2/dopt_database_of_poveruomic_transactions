@@ -25,6 +25,18 @@ No tests may read from `./data/` or any real user databases/CSVs.
   filtered transactions remain visible in the scrollable table.
 - Delete a transaction with confirmation.
 
+### Transactions-plus (Experimental)
+- Edit multiple non-contiguous rows in the table and click Save; confirm all changes persist.
+- Introduce an invalid row (e.g., payer == payee) and confirm Save is blocked with errors and
+  no rows are written.
+- Use column sorting and confirm it still works while editing.
+- Use the “add new value” helper to add a new payer/category and confirm it appears in the
+  table dropdown options and saves correctly.
+- Pick a subcategory that does not belong to the row’s category; confirm save is blocked with
+  a clear error message.
+- Edit tags via the multiselect editor (including a new tag) and confirm tags persist.
+- Discard changes and confirm the table resets to the original data.
+
 ### Import / Export / Backup
 - Import a valid semicolon CSV with mixed header casing; confirm rows inserted.
 - Import a CSV with an invalid row; confirm no partial insert.
@@ -61,6 +73,12 @@ No tests may read from `./data/` or any real user databases/CSVs.
 - Tag names:
   - Reject commas
   - Enforce lower(trim) and non-empty
+
+### Transactions-plus
+- Diffing: detect changes across multiple non-contiguous rows.
+- All-or-nothing save: any invalid row prevents all DB updates.
+- Subcategory/category validation rejects mismatches from the editor.
+- Tags multiselect parsing: normalize, dedupe, and persist in `tags`/`transaction_tags`.
 
 ### Dates
 - Validate ISO shape and calendar validity:
