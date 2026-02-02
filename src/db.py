@@ -53,11 +53,7 @@ def init_db(conn: sqlite3.Connection, schema_path: str) -> None:
 
 def init_settings_db(conn: sqlite3.Connection) -> None:
     conn.executescript(SETTINGS_SCHEMA_SQL)
-    columns = {row[1] for row in conn.execute("PRAGMA table_info(app_settings)")}
-    if "theme" in columns:
-        conn.execute("INSERT OR IGNORE INTO app_settings (id, theme) VALUES (1, 'light')")
-    else:
-        conn.execute("INSERT OR IGNORE INTO app_settings (id) VALUES (1)")
+    conn.execute("INSERT OR IGNORE INTO app_settings (id) VALUES (1)")
     conn.commit()
 
 
