@@ -5,7 +5,7 @@ import pandas as pd
 import sqlite3
 import streamlit as st
 
-from src import amounts, db, queries, session_state, tags, ui_widgets
+from src import amounts, db, queries, session_state, tags, transaction_validation, ui_widgets
 
 st.set_page_config(
     page_title="Transactions-plus",
@@ -815,32 +815,17 @@ try:
     submitted_new = st.button("Add transaction", key="txp_add_transaction_submit")
 
     if submitted_new:
-        errors: List[str] = []
-        try:
-            amount_cents = amounts.parse_amount_to_cents(form_amount)
-        except ValueError as exc:
-            errors.append(str(exc))
-            amount_cents = 0
-
-        notes_value = _normalize_optional(form_notes, lower=False)
-
-        if not category_value:
-            errors.append("Category is required")
-        if not payer_value and not payee_value:
-            errors.append("Payer or payee is required")
-        if payer_value and payee_value and payer_value == payee_value:
-            errors.append("Payer and payee must be different")
-
-        combined_tags = list(selected_tags)
-        if new_tag.strip():
-            try:
-                normalized = tags.normalize_tag(new_tag)
-            except ValueError as exc:
-                errors.append(str(exc))
-            else:
-                if normalized not in combined_tags:
-                    combined_tags.append(normalized)
-
+        payload, errors = transaction_validation.validate_transaction_form(
+            amount_raw=form_amount,
+            category=category_value,
+            payer=payer_value,
+            payee=payee_value,
+            payment_type=payment_type_value,
+            subcategory=subcategory_value,
+            notes=form_notes,
+            selected_tags=selected_tags,
+            new_tag=new_tag,
+        )
         if errors:
             st.error("; ".join(errors))
         else:
@@ -849,15 +834,15 @@ try:
                     conn,
                     date_payment=date_payment.isoformat(),
                     date_application=date_application.isoformat(),
-                    amount_cents=amount_cents,
-                    payer=_normalize_optional(payer_value),
-                    payee=_normalize_optional(payee_value),
-                    payment_type=_normalize_optional(payment_type_value),
-                    category=category_value,
-                    subcategory=_normalize_optional(subcategory_value),
-                    notes=notes_value,
+                    amount_cents=int(payload["amount_cents"]),
+                    payer=payload["payer"],
+                    payee=payload["payee"],
+                    payment_type=payload["payment_type"],
+                    category=str(payload["category"]),
+                    subcategory=payload["subcategory"],
+                    notes=payload["notes"],
                 )
-                tags.set_transaction_tags(conn, transaction_id, combined_tags)
+                tags.set_transaction_tags(conn, transaction_id, payload["tags"])
             st.success("Transaction added.")
             st.session_state["txp_force_reset"] = True
             st.rerun()
@@ -978,32 +963,17 @@ try:
                 submitted = st.form_submit_button("Save changes")
 
             if submitted:
-                errors: List[str] = []
-                try:
-                    amount_cents = amounts.parse_amount_to_cents(edit_amount)
-                except ValueError as exc:
-                    errors.append(str(exc))
-                    amount_cents = 0
-
-                if not category_value:
-                    errors.append("Category is required")
-                if not payer_value and not payee_value:
-                    errors.append("Payer or payee is required")
-                if payer_value and payee_value and payer_value == payee_value:
-                    errors.append("Payer and payee must be different")
-
-                notes_value = _normalize_optional(edit_notes, lower=False)
-
-                combined_tags = list(selected_tags)
-                if new_tag.strip():
-                    try:
-                        normalized = tags.normalize_tag(new_tag)
-                    except ValueError as exc:
-                        errors.append(str(exc))
-                    else:
-                        if normalized not in combined_tags:
-                            combined_tags.append(normalized)
-
+                payload, errors = transaction_validation.validate_transaction_form(
+                    amount_raw=edit_amount,
+                    category=category_value,
+                    payer=payer_value,
+                    payee=payee_value,
+                    payment_type=payment_type_value,
+                    subcategory=subcategory_value,
+                    notes=edit_notes,
+                    selected_tags=selected_tags,
+                    new_tag=new_tag,
+                )
                 if errors:
                     st.error("; ".join(errors))
                 else:
@@ -1013,15 +983,15 @@ try:
                             transaction_id=selected_id,
                             date_payment=edit_date_payment.isoformat(),
                             date_application=edit_date_application.isoformat(),
-                            amount_cents=amount_cents,
-                            payer=_normalize_optional(payer_value),
-                            payee=_normalize_optional(payee_value),
-                            payment_type=_normalize_optional(payment_type_value),
-                            category=category_value,
-                            subcategory=_normalize_optional(subcategory_value),
-                            notes=notes_value,
+                            amount_cents=int(payload["amount_cents"]),
+                            payer=payload["payer"],
+                            payee=payload["payee"],
+                            payment_type=payload["payment_type"],
+                            category=str(payload["category"]),
+                            subcategory=payload["subcategory"],
+                            notes=payload["notes"],
                         )
-                        tags.set_transaction_tags(conn, selected_id, combined_tags)
+                        tags.set_transaction_tags(conn, selected_id, payload["tags"])
                     st.success("Transaction updated.")
                     st.session_state["txp_force_reset"] = True
                     st.rerun()
