@@ -131,6 +131,7 @@ Purpose: CSV import, export, and backup.
   - Date field selector: date_payment or date_application.
   - Default date field is date_application.
   - Required date range selection.
+  - Quick range toggles: "Full period" (min/max dates) and "Full year" (select a year and use Jan 1–Dec 31).
   - Optional filters using P2/P3b.
   - Missing-value toggles: include missing payer, payee, or payment_type.
   - Multiple selected tags use ANY semantics (match any selected tag).
