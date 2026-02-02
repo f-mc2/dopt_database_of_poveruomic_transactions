@@ -69,13 +69,6 @@ def _normalize_optional(value: Optional[str], lower: bool = True) -> Optional[st
     return cleaned.lower() if lower else cleaned
 
 
-def _normalize_required(value: Optional[str], label: str) -> Tuple[Optional[str], Optional[str]]:
-    normalized = _normalize_optional(value)
-    if not normalized:
-        return None, f"{label} is required"
-    return normalized, None
-
-
 def _coerce_date(value: object, label: str) -> Tuple[Optional[str], Optional[str]]:
     if value is None:
         return None, f"{label} is required"
@@ -250,52 +243,58 @@ def _build_payload(
     if err:
         errors.append(err)
 
-    amount_raw = row.get("amount_cents")
-    try:
-        amount_cents = amounts.parse_amount_to_cents(str(amount_raw))
-    except ValueError as exc:
-        amount_cents = 0
-        errors.append(str(exc))
-
-    payer = _normalize_optional(row.get("payer"))
-    payee = _normalize_optional(row.get("payee"))
-    payment_type = _normalize_optional(row.get("payment_type"))
-
-    category, err = _normalize_required(row.get("category"), "Category")
-    if err:
-        errors.append(err)
-
-    subcategory = _normalize_optional(row.get("subcategory"))
-    if subcategory and category:
-        known_categories = subcategory_map.get(subcategory)
-        if known_categories and category not in known_categories:
-            errors.append("Subcategory does not match the selected category")
-
-    notes = _normalize_optional(row.get("notes"), lower=False)
-
     tag_list, err = _parse_tags_cell(row.get("tags"))
     if err:
         errors.append(err)
 
-    if not payer and not payee:
-        errors.append("Payer or payee is required")
-    if payer and payee and payer == payee:
-        errors.append("Payer and payee must be different")
+    amount_raw = row.get("amount_cents")
+    amount_text = "" if amount_raw is None else str(amount_raw)
+    category_value = _normalize_optional(row.get("category"))
+    payer_value = _normalize_optional(row.get("payer"))
+    payee_value = _normalize_optional(row.get("payee"))
+    payment_type_value = _normalize_optional(row.get("payment_type"))
+    subcategory_value = _normalize_optional(row.get("subcategory"))
+    notes_value = _normalize_optional(row.get("notes"), lower=False)
+
+    payload, form_errors = transaction_validation.validate_transaction_form(
+        amount_raw=amount_text,
+        category=category_value,
+        payer=payer_value,
+        payee=payee_value,
+        payment_type=payment_type_value,
+        subcategory=subcategory_value,
+        notes=notes_value,
+        selected_tags=tag_list,
+        new_tag=None,
+    )
+    if form_errors:
+        errors.extend(form_errors)
+
+    if payload:
+        subcategory = payload["subcategory"]
+        category = payload["category"]
+        if subcategory and category:
+            known_categories = subcategory_map.get(subcategory)
+            if known_categories and category not in known_categories:
+                errors.append("Subcategory does not match the selected category")
 
     if errors:
+        return None, errors
+
+    if payload is None:
         return None, errors
 
     payload = {
         "date_payment": date_payment,
         "date_application": date_application,
-        "amount_cents": amount_cents,
-        "payer": payer,
-        "payee": payee,
-        "payment_type": payment_type,
-        "category": category,
-        "subcategory": subcategory,
-        "notes": notes,
-        "tags": tag_list,
+        "amount_cents": payload["amount_cents"],
+        "payer": payload["payer"],
+        "payee": payload["payee"],
+        "payment_type": payload["payment_type"],
+        "category": payload["category"],
+        "subcategory": payload["subcategory"],
+        "notes": payload["notes"],
+        "tags": payload["tags"],
     }
     return payload, []
 
