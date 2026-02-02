@@ -33,6 +33,17 @@ DEFAULT_EXPORT_DIR = _default_dir("DOPT_CSV_EXPORT_DIR", "csv_export")
 DEFAULT_BACKUP_DIR = _default_dir("DOPT_DB_BACKUP_DIR", "db_backup")
 
 
+def normalize_db_path(path: Optional[str]) -> Optional[str]:
+    cleaned = (path or "").strip()
+    if not cleaned:
+        return None
+    expanded = Path(cleaned).expanduser()
+    try:
+        return str(expanded.resolve(strict=False))
+    except Exception:
+        return str(expanded)
+
+
 def settings_db_path(finance_db_path: Optional[str] = None) -> str:
     base_path = Path((finance_db_path or DEFAULT_DB_PATH)).expanduser()
     return str(base_path.parent / "app_settings.db")

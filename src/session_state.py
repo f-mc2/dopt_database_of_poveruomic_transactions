@@ -18,9 +18,12 @@ def ensure_db_session_state(
     app_settings = settings.get_app_settings(settings_conn)
 
     if "db_path" not in st.session_state:
-        st.session_state.db_path = (
-            app_settings.get("last_used_db_path") or settings.DEFAULT_DB_PATH
-        )
+        raw_path = app_settings.get("last_used_db_path") or settings.DEFAULT_DB_PATH
+        st.session_state.db_path = settings.normalize_db_path(raw_path) or raw_path
+    else:
+        normalized_path = settings.normalize_db_path(st.session_state.db_path)
+        if normalized_path and normalized_path != st.session_state.db_path:
+            st.session_state.db_path = normalized_path
     if "db_ready" not in st.session_state:
         st.session_state.db_ready = False
     if "db_auto_open_attempted" not in st.session_state:

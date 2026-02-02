@@ -70,8 +70,10 @@ manual_path = st.text_input(
     key="manual_db_path",
 )
 
-selected_path = manual_path.strip() if recent_choice == "(manual)" else recent_choice
-current_path = Path(st.session_state.db_path).expanduser()
+selected_path_raw = manual_path.strip() if recent_choice == "(manual)" else recent_choice
+selected_path = settings.normalize_db_path(selected_path_raw) if selected_path_raw else ""
+current_path_raw = settings.normalize_db_path(st.session_state.db_path) or st.session_state.db_path
+current_path = Path(current_path_raw).expanduser()
 
 confirm_switch = False
 if selected_path and selected_path != st.session_state.db_path and st.session_state.db_ready:
