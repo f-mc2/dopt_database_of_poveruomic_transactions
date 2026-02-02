@@ -5,7 +5,7 @@ import os
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
-from src import amounts, tags
+from src import amounts, tags, transaction_validation
 
 REQUIRED_COLUMNS = {"amount", "category"}
 DATE_COLUMNS = {"date_payment", "date_application"}
@@ -110,23 +110,6 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
             date_application = None
 
         try:
-            amount_cents = amounts.parse_amount_to_cents(row.get("amount") or "")
-        except ValueError as exc:
-            row_errors.append(str(exc))
-            amount_cents = 0
-
-        try:
-            category_value = _normalize_required(row.get("category"), lower=True)
-        except ValueError as exc:
-            row_errors.append(str(exc))
-            category_value = ""
-
-        payer_value = _normalize_optional(row.get("payer"), lower=True)
-        payee_value = _normalize_optional(row.get("payee"), lower=True)
-        payment_type_value = _normalize_optional(row.get("payment_type"), lower=True)
-        subcategory_value = _normalize_optional(row.get("subcategory"), lower=True)
-        notes_value = _normalize_optional(row.get("notes"))
-        try:
             tag_values = tags.parse_tags(row.get("tags") or "")
         except ValueError as exc:
             row_errors.append(str(exc))
@@ -139,10 +122,19 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
         if date_application is None and date_payment is not None:
             date_application = date_payment
 
-        if not payer_value and not payee_value:
-            row_errors.append("At least one of payer or payee is required")
-        if payer_value and payee_value and payer_value == payee_value:
-            row_errors.append("Payer and payee must be different")
+        payload, form_errors = transaction_validation.validate_transaction_form(
+            amount_raw=row.get("amount") or "",
+            category=row.get("category"),
+            payer=row.get("payer"),
+            payee=row.get("payee"),
+            payment_type=row.get("payment_type"),
+            subcategory=row.get("subcategory"),
+            notes=row.get("notes"),
+            selected_tags=tag_values,
+            new_tag=None,
+        )
+        if form_errors:
+            row_errors.extend(form_errors)
 
         if row_errors:
             errors.append(ValidationError(row=index, message="; ".join(row_errors)))
@@ -152,14 +144,14 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
             ParsedRow(
                 date_payment=date_payment or "",
                 date_application=date_application or "",
-                amount_cents=amount_cents,
-                payer=payer_value,
-                payee=payee_value,
-                payment_type=payment_type_value,
-                category=category_value,
-                subcategory=subcategory_value,
-                notes=notes_value,
-                tags=tag_values,
+                amount_cents=int(payload["amount_cents"]),
+                payer=payload["payer"],
+                payee=payload["payee"],
+                payment_type=payload["payment_type"],
+                category=str(payload["category"]),
+                subcategory=payload["subcategory"],
+                notes=payload["notes"],
+                tags=payload["tags"],
             )
         )
 
@@ -262,22 +254,6 @@ def save_export_csv(contents: str, directory: str, filename: str) -> str:
 def default_export_filename(prefix: str = "finance_export") -> str:
     timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{prefix}_{timestamp}.csv"
-
-
-def _normalize_optional(value: Optional[str], lower: bool = False) -> Optional[str]:
-    if value is None:
-        return None
-    cleaned = value.strip()
-    if not cleaned:
-        return None
-    return cleaned.lower() if lower else cleaned
-
-
-def _normalize_required(value: Optional[str], lower: bool = False) -> str:
-    cleaned = (value or "").strip()
-    if not cleaned:
-        raise ValueError("Missing required value")
-    return cleaned.lower() if lower else cleaned
 
 
 def _parse_date_optional(value: Optional[str], field_label: str) -> Optional[str]:
