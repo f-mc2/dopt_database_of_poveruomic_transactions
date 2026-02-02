@@ -105,6 +105,8 @@ The app runs on a desktop host and is usable on mobile browsers.
 - IE4: Tags column is comma-separated; no escaping; tag names cannot contain commas.
 - IE5: If only one date provided in a row, copy it to the other before insert.
 - IE6: Export requires date range and date-field selector (default `date_application`).
+- IE6a: Export can use quick range toggles: "Full period" (min/max dates) and "Full year"
+  (select a year and use Jan 1–Dec 31).
 - IE7: Export filters use P2/P3b; tag filter uses ANY semantics.
 - IE8: Export includes both date columns and a `tags` column.
 - IE9: Backup uses SQLite online backup API; confirmation required.
