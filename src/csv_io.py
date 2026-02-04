@@ -1,11 +1,10 @@
 import csv
-import datetime as dt
 import io
 import os
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
-from src import amounts, tags, transaction_validation
+from src import amounts, date_utils, tags, transaction_validation
 
 REQUIRED_COLUMNS = {"amount", "category"}
 DATE_COLUMNS = {"date_payment", "date_application"}
@@ -98,13 +97,15 @@ def validate_rows(rows: Sequence[Dict[str, Optional[str]]]) -> Tuple[List[Parsed
     for index, row in enumerate(rows, start=1):
         row_errors: List[str] = []
         try:
-            date_payment = _parse_date_optional(row.get("date_payment"), "date_payment")
+            date_payment = date_utils.parse_date_optional(row.get("date_payment"), "date_payment")
         except ValueError as exc:
             row_errors.append(str(exc))
             date_payment = None
 
         try:
-            date_application = _parse_date_optional(row.get("date_application"), "date_application")
+            date_application = date_utils.parse_date_optional(
+                row.get("date_application"), "date_application"
+            )
         except ValueError as exc:
             row_errors.append(str(exc))
             date_application = None
@@ -254,19 +255,6 @@ def save_export_csv(contents: str, directory: str, filename: str) -> str:
 def default_export_filename(prefix: str = "finance_export") -> str:
     timestamp = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{prefix}_{timestamp}.csv"
-
-
-def _parse_date_optional(value: Optional[str], field_label: str) -> Optional[str]:
-    cleaned = (value or "").strip()
-    if not cleaned:
-        return None
-    if len(cleaned) != 10:
-        raise ValueError(f"Invalid {field_label} format")
-    try:
-        dt.date.fromisoformat(cleaned)
-    except ValueError as exc:
-        raise ValueError(f"Invalid {field_label} format") from exc
-    return cleaned
 
 
 def _normalize_header(header: Optional[str]) -> str:

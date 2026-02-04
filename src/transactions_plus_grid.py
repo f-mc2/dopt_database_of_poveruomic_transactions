@@ -1,9 +1,8 @@
-import datetime as dt
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
-from src import tags, transaction_validation
+from src import date_utils, tags, transaction_validation
 
 NONE_SENTINEL = "(none)"
 
@@ -20,24 +19,7 @@ def normalize_optional(value: Optional[str], lower: bool = True) -> Optional[str
 
 
 def coerce_date(value: object, label: str) -> Tuple[Optional[str], Optional[str]]:
-    if value is None:
-        return None, f"{label} is required"
-    if isinstance(value, dt.datetime):
-        return value.date().isoformat(), None
-    if isinstance(value, dt.date):
-        return value.isoformat(), None
-    if isinstance(value, pd.Timestamp):
-        return value.date().isoformat(), None
-    if isinstance(value, str):
-        cleaned = value.strip()
-        if not cleaned:
-            return None, f"{label} is required"
-        try:
-            dt.date.fromisoformat(cleaned)
-        except ValueError:
-            return None, f"{label} must be YYYY-MM-DD"
-        return cleaned, None
-    return None, f"{label} must be YYYY-MM-DD"
+    return date_utils.coerce_date(value, label)
 
 
 def parse_tags_cell(value: object) -> Tuple[List[str], Optional[str]]:
