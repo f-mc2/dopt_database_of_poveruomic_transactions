@@ -114,6 +114,8 @@ def multiselect_existing(label: str, options: Iterable[str], key: str) -> List[s
         for item in selected:
             if item not in option_list:
                 option_list.append(item)
+    if key in st.session_state:
+        return st.multiselect(label, options=option_list, key=key)
     return st.multiselect(label, options=option_list, default=selected, key=key)
 
 
@@ -128,7 +130,10 @@ def multiselect_with_missing(
         for item in selected:
             if item not in option_list:
                 option_list.append(item)
-    selection = st.multiselect(label, options=option_list, default=selected, key=key)
+    if key in st.session_state:
+        selection = st.multiselect(label, options=option_list, key=key)
+    else:
+        selection = st.multiselect(label, options=option_list, default=selected, key=key)
     include_missing = missing_label in selection
     filtered = [item for item in selection if item != missing_label]
     return filtered, include_missing
