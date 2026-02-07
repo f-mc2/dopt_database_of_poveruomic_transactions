@@ -7,7 +7,11 @@ path = "pages/1_Tutorial.py"
 name = "Tutorial"
 
 [[pages]]
-path = "pages/2_Transactions.py"
+path = "pages/2_Transactions_Legacy.py"
+name = "Transactions-legacy"
+
+[[pages]]
+path = "pages/6_Transactions.py"
 name = "Transactions"
 
 [[pages]]
