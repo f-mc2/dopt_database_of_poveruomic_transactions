@@ -109,10 +109,11 @@ Keep files small (<250–300 LOC each).
   - `ui_widgets.py`        (P1/P2/P3 helpers)
 - `pages/`
   - `1_Home.py`
-  - `2_Transactions.py`
+  - `2_Transactions_Legacy.py`
   - `3_Import_Export.py`   (includes Backup)
   - `4_Manage_Values.py`
   - `5_Compare.py`
+  - `6_Transactions.py`
 - `requirements.txt`
 - `Dockerfile`
 - `docker-compose.yml`

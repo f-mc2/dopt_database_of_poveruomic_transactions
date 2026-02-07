@@ -22,7 +22,7 @@ It follows PRODUCT_BRIEF.md, UI_BLUEPRINT.md, and DATA_DICTIONARY.md and avoids 
 ## Transactions (Inline Editor)
 
 ### UI + State
-- Implement a separate page (e.g., `pages/6_Transactions_Plus.py`) to avoid regressions in
+- Implement a separate page (e.g., `pages/6_Transactions.py`) to avoid regressions in
   the existing Transactions-legacy page.
 - Use `st.data_editor` for inline edits with fixed rows to preserve column sorting.
 - Maintain:
