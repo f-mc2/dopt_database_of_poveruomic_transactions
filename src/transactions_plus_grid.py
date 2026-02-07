@@ -1,3 +1,4 @@
+import uuid
 from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
@@ -5,6 +6,21 @@ import pandas as pd
 from src import date_utils, tags, transaction_validation
 
 NONE_SENTINEL = "(none)"
+ROW_ID_COLUMN = "__row_id__"
+
+
+def build_row_id(transaction_id: int) -> str:
+    return f"id:{transaction_id}"
+
+
+def ensure_row_ids(df: pd.DataFrame) -> pd.DataFrame:
+    if ROW_ID_COLUMN not in df.columns:
+        df[ROW_ID_COLUMN] = None
+    mask = df[ROW_ID_COLUMN].isna() | (df[ROW_ID_COLUMN] == "")
+    if mask.any():
+        for idx in df.loc[mask].index:
+            df.at[idx, ROW_ID_COLUMN] = f"tmp:{uuid.uuid4().hex}"
+    return df
 
 
 def normalize_optional(value: Optional[str], lower: bool = True) -> Optional[str]:

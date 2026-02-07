@@ -35,6 +35,7 @@ if not st.session_state.get("db_ready"):
 DATE_INPUT_MIN = dt.date(1900, 1, 1)
 DATE_INPUT_MAX = dt.date(2100, 12, 31)
 NONE_SENTINEL = transactions_plus_grid.NONE_SENTINEL
+ROW_ID_COLUMN = transactions_plus_grid.ROW_ID_COLUMN
 SELECT_COLUMN = "__select__"
 SELECT_LABEL = "Select"
 COLUMN_ORDER = [
@@ -51,6 +52,7 @@ COLUMN_ORDER = [
     "payment_type",
 ]
 EDITOR_COLUMN_ORDER = [SELECT_COLUMN] + COLUMN_ORDER
+BASE_COLUMN_ORDER = [ROW_ID_COLUMN] + EDITOR_COLUMN_ORDER
 COLUMN_LABELS = {
     "id": "id",
     "date_payment": "Date payment",
@@ -69,6 +71,20 @@ LABEL_TO_COLUMN = {label: field for field, label in COLUMN_LABELS.items()}
 
 def _normalize_optional(value: Optional[str], lower: bool = True) -> Optional[str]:
     return transactions_plus_grid.normalize_optional(value, lower=lower)
+
+
+def _coerce_id(value: object) -> Optional[int]:
+    if value is None:
+        return None
+    if pd.isna(value):
+        return None
+    cleaned = str(value).strip()
+    if not cleaned:
+        return None
+    try:
+        return int(cleaned)
+    except ValueError:
+        return None
 
 
 def _merge_options(base: Iterable[str], extras: Iterable[str]) -> List[str]:
@@ -138,6 +154,7 @@ def _render_add_option_helper(options: Dict[str, List[str]]) -> None:
 
 def _editor_row(row: sqlite3.Row) -> Dict[str, object]:
     return {
+        ROW_ID_COLUMN: transactions_plus_grid.build_row_id(int(row["id"])),
         SELECT_COLUMN: False,
         "id": int(row["id"]),
         "date_payment": row["date_payment"],
@@ -315,13 +332,13 @@ try:
     with table_container:
         if error_message:
             st.error(error_message)
-        elif not transactions:
-            st.info("No transactions match the current filters.")
         else:
+            if not transactions:
+                st.info("No transactions match the current filters.")
             display_rows = [_editor_row(row) for row in transactions]
-            base_df = pd.DataFrame(display_rows)
+            base_df = pd.DataFrame(display_rows, columns=BASE_COLUMN_ORDER)
             if not base_df.empty:
-                base_df = base_df[EDITOR_COLUMN_ORDER]
+                base_df = base_df[BASE_COLUMN_ORDER]
 
             visible_fields = [
                 LABEL_TO_COLUMN[label]
@@ -345,7 +362,12 @@ try:
                 st.session_state["txp_editor_df"] = base_df.copy(deep=True)
                 st.session_state["txp_force_reset"] = False
                 st.session_state["txp_editor_key"] = st.session_state.get("txp_editor_key", 0) + 1
-            editor_df = st.session_state.get("txp_editor_df", base_df)
+            editor_df = st.session_state.get("txp_editor_df", base_df).copy(deep=True)
+            editor_df = transactions_plus_grid.ensure_row_ids(editor_df)
+            if SELECT_COLUMN not in editor_df.columns:
+                editor_df[SELECT_COLUMN] = False
+            else:
+                editor_df[SELECT_COLUMN] = editor_df[SELECT_COLUMN].fillna(False)
 
             column_config = {
                 SELECT_COLUMN: st.column_config.CheckboxColumn(SELECT_LABEL),
@@ -392,8 +414,12 @@ try:
                 hide_index=True,
                 height=editor_height,
                 width="stretch",
-                disabled=["id"],
+                disabled=["id", ROW_ID_COLUMN],
+                num_rows="dynamic",
             )
+            edited_df = transactions_plus_grid.ensure_row_ids(edited_df.copy(deep=True))
+            if SELECT_COLUMN in edited_df.columns:
+                edited_df[SELECT_COLUMN] = edited_df[SELECT_COLUMN].fillna(False)
             st.session_state["txp_editor_df"] = edited_df
 
             st.caption(
@@ -405,14 +431,15 @@ try:
             )
 
             with st.expander("Bulk edit selected rows", expanded=False):
-                selected_ids = []
-                if SELECT_COLUMN in edited_df.columns and "id" in edited_df.columns:
-                    selected_ids = (
-                        edited_df.loc[edited_df[SELECT_COLUMN] == True, "id"]
-                        .astype(int)
+                selected_row_ids: List[str] = []
+                if SELECT_COLUMN in edited_df.columns and ROW_ID_COLUMN in edited_df.columns:
+                    selected_row_ids = (
+                        edited_df.loc[edited_df[SELECT_COLUMN] == True, ROW_ID_COLUMN]
+                        .dropna()
+                        .astype(str)
                         .tolist()
                     )
-                st.caption(f"Selected rows: {len(selected_ids)}")
+                st.caption(f"Selected rows: {len(selected_row_ids)}")
 
                 bulk_fields = {
                     "category_subcategory": "Category + subcategory",
@@ -519,11 +546,11 @@ try:
                     key="txp_bulk_clear_selection",
                 )
                 if st.button("Apply to selected rows", key="txp_bulk_apply"):
-                    if not selected_ids:
+                    if not selected_row_ids:
                         st.warning("Select at least one row to apply changes.")
                     else:
                         updated_df = edited_df.copy(deep=True)
-                        selected_mask = updated_df["id"].isin(selected_ids)
+                        selected_mask = updated_df[ROW_ID_COLUMN].isin(selected_row_ids)
                         if bulk_field == "category_subcategory":
                             updated_df.loc[selected_mask, "category"] = bulk_value["category"]
                             updated_df.loc[selected_mask, "subcategory"] = bulk_value[
@@ -550,6 +577,28 @@ try:
             with action_col2:
                 discard_clicked = st.button("Discard changes", key="txp_discard")
 
+            original_df = st.session_state.get("txp_original_df", base_df)
+            original_ids = {
+                tx_id
+                for tx_id in (
+                    _coerce_id(row.get("id")) for _, row in original_df.iterrows()
+                )
+                if tx_id is not None
+            }
+            edited_ids = {
+                tx_id
+                for tx_id in (_coerce_id(row.get("id")) for _, row in edited_df.iterrows())
+                if tx_id is not None
+            }
+            pending_delete_ids = sorted(original_ids - edited_ids)
+            if pending_delete_ids:
+                st.warning(f"Pending deletes: {len(pending_delete_ids)} row(s).")
+                confirm_deletes = st.checkbox(
+                    "Confirm deletes", key="txp_confirm_deletes"
+                )
+            else:
+                confirm_deletes = False
+
             if discard_clicked:
                 st.session_state["txp_force_reset"] = True
                 st.success("Changes discarded.")
@@ -557,50 +606,72 @@ try:
 
             if save_clicked:
                 errors: List[str] = []
-                payloads: Dict[int, Dict[str, object]] = {}
+                updates: Dict[int, Dict[str, object]] = {}
+                inserts: List[Dict[str, object]] = []
 
-                original_df = st.session_state.get("txp_original_df", base_df)
                 original_map = {
-                    int(row["id"]): row
+                    tx_id: row
                     for _, row in original_df.iterrows()
-                    if "id" in row
+                    for tx_id in [_coerce_id(row.get("id"))]
+                    if tx_id is not None
                 }
 
                 for _, row in edited_df.iterrows():
-                    tx_id_raw = row.get("id")
-                    if tx_id_raw is None:
-                        errors.append("Missing transaction id for a row.")
-                        continue
-                    tx_id = int(tx_id_raw)
+                    tx_id = _coerce_id(row.get("id"))
+                    row_id = row.get(ROW_ID_COLUMN) or "new"
+                    label = f"Row {tx_id}" if tx_id is not None else f"Row {row_id}"
                     payload, row_errors = transactions_plus_grid.build_payload(
                         row, subcategory_map
                     )
                     if row_errors:
                         for msg in row_errors:
-                            errors.append(f"Row {tx_id}: {msg}")
+                            errors.append(f"{label}: {msg}")
+                        continue
+                    if payload is None:
+                        errors.append(f"{label}: unable to validate transaction.")
+                        continue
+                    if tx_id is None:
+                        inserts.append(payload)
                         continue
                     original_row = original_map.get(tx_id)
                     if original_row is None:
-                        errors.append(f"Row {tx_id}: original transaction not found.")
+                        errors.append(f"{label}: original transaction not found.")
                         continue
                     original_payload, original_errors = transactions_plus_grid.build_payload(
                         original_row, subcategory_map
                     )
-                    if original_errors:
-                        errors.append(
-                            f"Row {tx_id}: unable to validate original transaction."
-                        )
+                    if original_errors or original_payload is None:
+                        errors.append(f"{label}: unable to validate original transaction.")
                         continue
                     if payload != original_payload:
-                        payloads[tx_id] = payload
+                        updates[tx_id] = payload
+
+                if pending_delete_ids and not confirm_deletes:
+                    errors.append("Confirm deletes to remove rows.")
 
                 if errors:
                     st.error("; ".join(errors))
-                elif not payloads:
+                elif not updates and not inserts and not pending_delete_ids:
                     st.info("No changes to save.")
                 else:
                     with conn:
-                        for tx_id, payload in payloads.items():
+                        for tx_id in pending_delete_ids:
+                            queries.delete_transaction(conn, tx_id)
+                        for payload in inserts:
+                            transaction_id = queries.insert_transaction(
+                                conn,
+                                date_payment=payload["date_payment"],
+                                date_application=payload["date_application"],
+                                amount_cents=payload["amount_cents"],
+                                payer=payload["payer"],
+                                payee=payload["payee"],
+                                payment_type=payload["payment_type"],
+                                category=payload["category"],
+                                subcategory=payload["subcategory"],
+                                notes=payload["notes"],
+                            )
+                            tags.set_transaction_tags(conn, transaction_id, payload["tags"])
+                        for tx_id, payload in updates.items():
                             queries.update_transaction(
                                 conn,
                                 transaction_id=tx_id,
@@ -615,7 +686,13 @@ try:
                                 notes=payload["notes"],
                             )
                             tags.set_transaction_tags(conn, tx_id, payload["tags"])
-                    st.success(f"Saved changes to {len(payloads)} transaction(s).")
+                    saved_count = len(updates) + len(inserts)
+                    if pending_delete_ids:
+                        st.success(
+                            f"Saved {saved_count} change(s) and deleted {len(pending_delete_ids)} row(s)."
+                        )
+                    else:
+                        st.success(f"Saved changes to {saved_count} transaction(s).")
                     st.session_state["txp_force_reset"] = True
                     st.rerun()
 
