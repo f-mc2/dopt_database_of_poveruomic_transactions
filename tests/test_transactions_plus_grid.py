@@ -53,3 +53,20 @@ def test_build_payload_subcategory_mismatch() -> None:
 
     assert payload is None
     assert "Subcategory does not match the selected category" in errors
+
+
+def test_ensure_row_ids_assigns_tmp_ids() -> None:
+    df = pd.DataFrame({grid.ROW_ID_COLUMN: [None, "id:1"]})
+    updated = grid.ensure_row_ids(df)
+
+    assert grid.ROW_ID_COLUMN in updated.columns
+    assert str(updated.loc[0, grid.ROW_ID_COLUMN]).startswith("tmp:")
+    assert updated.loc[1, grid.ROW_ID_COLUMN] == "id:1"
+
+
+def test_ensure_row_ids_adds_column() -> None:
+    df = pd.DataFrame({"id": [1]})
+    updated = grid.ensure_row_ids(df)
+
+    assert grid.ROW_ID_COLUMN in updated.columns
+    assert str(updated.loc[0, grid.ROW_ID_COLUMN]).startswith("tmp:")
