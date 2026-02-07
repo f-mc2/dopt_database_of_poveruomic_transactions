@@ -11,8 +11,8 @@ The app runs on a desktop host and is usable on mobile browsers.
 
 ## Goals
 1. Strict, atomic CSV import/export for transactions (semicolon-separated).
-2. One-at-a-time transaction add/edit/delete with normalized tags (core Transactions page).
-3. Transactions-plus allows bulk inline edits with explicit save and validation.
+2. One-at-a-time transaction add/edit/delete with normalized tags (core Transactions-legacy page).
+3. Transactions allows bulk inline edits with explicit save and validation.
 4. Comparison analytics with periods, groups, and node slices.
 5. Bulk rename/merge of reference values (payer, payee, category, subcategory, payment_type, tags).
 6. WAL-safe database backup.
@@ -20,7 +20,7 @@ The app runs on a desktop host and is usable on mobile browsers.
 ## Non-goals
 - Multi-user support, cloud sync, budgets, forecasting, recurring transactions.
 - Bulk delete of transactions (except controlled Manage Values operations).
-- Bulk transaction edits are only allowed in the Transactions-plus page.
+- Bulk transaction edits are only allowed in the Transactions page.
 - Multi-currency.
 
 ## Personas and Context
@@ -49,7 +49,7 @@ The app runs on a desktop host and is usable on mobile browsers.
 - TU1: Dedicated tutorial page in the sidebar (label "Tutorial").
 - TU2: README-style tutorial section with comparison logic explainer; content finalized later.
 
-### Transactions
+### Transactions-legacy
 - T1: Filters include date range, payer, payee, category, subcategory, payment_type, tags.
 - T2: Date range filter applies to `date_application` (no selector in MVP).
 - T3: Missing-value toggles for payer/payee/payment_type.
@@ -72,17 +72,17 @@ The app runs on a desktop host and is usable on mobile browsers.
 - T13: Filter controls (date range, payer, payee, category, subcategory, payment_type, tags,
   missing-value toggles) render below the table.
 
-### Transactions-plus (Experimental)
-- TP1: Layout mirrors Transactions: search input, visible-column selector, editable table,
+### Transactions
+- TP1: Layout mirrors Transactions-legacy: search input, visible-column selector, editable table,
   then filters below the table.
 - TP2: Table uses a scrollable editor with a fixed header; show about 15 rows in view and
   allow scrolling through all matching transactions.
 - TP3: Column sorting via header clicks must remain available.
 - TP4: All fields are editable except `id`.
 - TP5: Bulk edits across multiple (including non-contiguous) rows are allowed.
-- TP6: Add/edit/delete single-transaction forms remain available on the page (same behavior
-  as Transactions). The grid supports in-table add/remove with explicit save; deletions require
-  confirmation before saving.
+- TP6: Add transaction form remains available on the page (same behavior as Transactions-legacy).
+  The grid supports in-table add/remove with explicit save; deletions require confirmation
+  before saving.
 - TP7: Save is explicit and all-or-nothing: if any edited row is invalid, no changes are
   written to the DB and errors are shown.
 - TP8: Suggestions for payer/payee/category/subcategory/payment_type use existing DB values
@@ -185,10 +185,10 @@ For each period P, group G=(A,B), node N:
 - Dates accept one provided date and copy to the other; invalid calendar dates are rejected in app.
 - Tag names cannot contain commas (UI + DB enforced).
 - Payer/payee invariants are enforced by DB and preflight UI.
-- Transactions list supports column hide/show, table sorting, and shows all filtered transactions;
+- Transactions-legacy list supports column hide/show, table sorting, and shows all filtered transactions;
   date filter uses `date_application`.
-- Transactions-plus supports bulk inline edits with explicit save, all-or-nothing validation,
-  and retains column sorting; add/delete remains via forms.
+- Transactions supports bulk inline edits with explicit save, all-or-nothing validation,
+  and retains column sorting; add/remove happens in-table with explicit save.
 - Comparison outputs match role vs matched-only semantics and node slicing.
 - Backup uses SQLite online backup API to create consistent snapshots.
 

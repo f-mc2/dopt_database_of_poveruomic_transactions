@@ -42,7 +42,8 @@ Override with env vars:
 
 ## How to use the app
 - Home: open or create a finance DB and see key stats.
-- Transactions: add/edit one transaction at a time; tags and normalized fields are enforced.
+- Transactions-legacy: add/edit one transaction at a time; tags and normalized fields are enforced.
+- Transactions: bulk inline edits with explicit save and validation.
 - Import/Export: semicolon-separated CSV import; filtered export with tags column.
 - Manage Values: rename or merge payers, payees, categories, subcategories, tags.
 - Compare: configure periods, groups, and slices to analyze trends.

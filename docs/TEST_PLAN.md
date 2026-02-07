@@ -17,7 +17,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
 - Set import/export/backup dirs in settings and confirm persistence across reload.
 - Switch DBs; confirm session filters reset and a confirmation appears.
 
-### Transactions
+### Transactions-legacy
 - Add a transaction with only one date; confirm the other date auto-copies.
 - Add tags and confirm they display as a sorted, comma-separated list in the table.
 - Verify date range filter uses `date_application`.
@@ -25,7 +25,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
   filtered transactions remain visible in the scrollable table.
 - Delete a transaction with confirmation.
 
-### Transactions-plus (Experimental)
+### Transactions
 - Edit multiple non-contiguous rows in the table and click Save; confirm all changes persist.
 - Introduce an invalid row (e.g., payer == payee) and confirm Save is blocked with errors and
   no rows are written.
@@ -74,7 +74,7 @@ No tests may read from `./data/` or any real user databases/CSVs.
   - Reject commas
   - Enforce lower(trim) and non-empty
 
-### Transactions-plus
+### Transactions
 - Diffing: detect changes across multiple non-contiguous rows.
 - All-or-nothing save: any invalid row prevents all DB updates.
 - Subcategory/category validation rejects mismatches from the editor.

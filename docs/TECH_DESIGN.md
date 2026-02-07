@@ -19,11 +19,11 @@ It follows PRODUCT_BRIEF.md, UI_BLUEPRINT.md, and DATA_DICTIONARY.md and avoids 
   - `plotting.py`: Altair charts for comparison outputs.
   - `ui_widgets.py`: P1/P2/P3 widget helpers.
 
-## Transactions-plus (Inline Editor)
+## Transactions (Inline Editor)
 
 ### UI + State
 - Implement a separate page (e.g., `pages/6_Transactions_Plus.py`) to avoid regressions in
-  the existing Transactions page.
+  the existing Transactions-legacy page.
 - Use `st.data_editor` for inline edits with fixed rows to preserve column sorting.
 - Maintain:
   - `original_df`: the filtered dataset as loaded from the DB.
@@ -62,9 +62,9 @@ It follows PRODUCT_BRIEF.md, UI_BLUEPRINT.md, and DATA_DICTIONARY.md and avoids 
 - After save, re-query using the active filters and refresh the table; rows that no longer
   match filters disappear.
 
-### Add/Edit/Delete Forms
-- Keep existing single-transaction forms below the editor for safer operations and to avoid
-  `st.data_editor` row add/remove limitations.
+### Add/Edit Forms
+- Keep the single-transaction Add form below the editor for safer one-at-a-time entry.
+- Edits/deletes happen in-table with explicit save and delete confirmation.
 
 ## Databases
 
@@ -255,7 +255,7 @@ UI rendering:
 - Tag filters:
   - ANY uses `EXISTS` on `transaction_tags` with `IN` list.
   - ALL uses `GROUP BY transaction_id HAVING COUNT(DISTINCT tag_id) = ?`.
-- Transactions and export filters use ANY semantics.
+- Transactions-legacy and Transactions filters use ANY semantics.
 - Role mode inflow/outflow can be computed with conditional sums in one query or as two queries,
   but results must be consistent with the tx_count definition.
 

@@ -14,8 +14,8 @@ safe database backups.
 ## Goals (MVP)
 1. Import semicolon-separated CSV transactions with strict validation and atomic insert.
 2. Export transactions to CSV with filters and a required date range.
-3. Add, edit, and delete transactions one at a time, including tags.
-4. Transactions-plus provides bulk inline edits with explicit save (experimental).
+3. Add, edit, and delete transactions one at a time, including tags (Transactions-legacy).
+4. Transactions provides bulk inline edits with explicit save (experimental).
 5. Comparison engine with multiple periods and groups, correct inflow/outflow logic, and charts.
 6. Manage values in bulk (rename/merge) for payer, payee, category, subcategory, payment_type, tags.
 7. Back up the SQLite database to a configured directory.
@@ -25,11 +25,11 @@ safe database backups.
 - Cloud sync or external integrations (bank APIs).
 - Budgets, recurring schedules, or forecasting.
 - Bulk delete of transactions in MVP.
-- Bulk edits are allowed only in the Transactions-plus page.
+- Bulk edits are allowed only in the Transactions page.
 
 ## MVP Scope
 ### In Scope
-- Streamlit multipage UI with pages for Home, Transactions, Transactions-plus,
+- Streamlit multipage UI with pages for Home, Transactions-legacy, Transactions,
   Import/Export (including Backup), Manage Values, Compare, and Tutorial.
 - SQLite via Python sqlite3 with WAL and foreign keys enabled.
 - Normalized tags (tags, transaction_tags).

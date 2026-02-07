@@ -6,7 +6,7 @@
 - Each page sets Streamlit layout to wide via set_page_config.
 - Destructive actions always require explicit confirmation.
 - No arbitrary bulk delete of transactions; only one-at-a-time deletes.
-  Transactions-plus allows bulk edits with explicit save; controlled bulk operations
+  Transactions allows bulk edits with explicit save; controlled bulk operations
   are otherwise limited to Manage Values rename/merge/delete.
 - Finance-domain values are stored in lowercase; notes preserve case. Search is case-insensitive.
 - Use existing values whenever possible; creation is allowed only in explicit contexts
@@ -63,7 +63,7 @@ Purpose: README-style onboarding and comparison explainer.
 - README-style tutorial section (headers, text, bullets) with a comparison logic explainer;
   optional images; final content defined later.
 
-### Transactions
+### Transactions-legacy
 Purpose: view and maintain transactions.
 - Search: free-text input at the top; filters by payer, payee, category, subcategory, tags,
   and notes.
@@ -91,13 +91,13 @@ Purpose: view and maintain transactions.
 - Edit transaction (one at a time): same fields as add.
 - Delete transaction: confirmation required.
 
-### Transactions-plus (Experimental)
-Purpose: inline editing with bulk saves while keeping the original Transactions workflow intact.
+### Transactions
+Purpose: inline editing with bulk saves while keeping the Transactions-legacy workflow intact.
 - Layout:
   - Search input at the top.
   - Visible columns selector directly above the table.
   - Editable table below (approx. 15 visible rows; scroll to view all results).
-  - Filters appear below the table (same filters as Transactions).
+  - Filters appear below the table (same filters as Transactions-legacy).
 - Table behavior:
   - Column sorting via header clicks remains enabled.
   - All fields editable except `id`.
@@ -113,8 +113,8 @@ Purpose: inline editing with bulk saves while keeping the original Transactions 
   - Use a multiselect-style editor in the table; allow new tags; normalize on save.
   - Tags shown as a list in the table editor.
 - Forms:
-  - Keep single-transaction Add/Edit/Delete forms below for safe one-at-a-time operations.
-  - Delete requires confirmation (checkbox).
+  - Keep single-transaction Add form below for safe one-at-a-time creation.
+  - Edits/deletes happen in-table with explicit save and delete confirmation.
 
 ### Import/Export
 Purpose: CSV import, export, and backup.
