@@ -17,7 +17,7 @@ from src import (
 )
 
 st.set_page_config(
-    page_title="Transactions-plus",
+    page_title="Transactions",
     page_icon="\U0001F4B6",
     initial_sidebar_state="auto",
     layout="wide",
@@ -26,7 +26,7 @@ st.set_page_config(
 session_state.ensure_db_session_state()
 ui_widgets.render_sidebar_nav()
 
-st.title("Transactions-plus")
+st.title("Transactions")
 
 if not st.session_state.get("db_ready"):
     st.warning("Open or create a database from the Home page first.")

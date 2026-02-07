@@ -8,7 +8,7 @@ import streamlit as st
 from src import amounts, db, queries, session_state, tags, transaction_validation, ui_widgets
 
 st.set_page_config(
-    page_title="Transactions",
+    page_title="Transactions-legacy",
     page_icon="\U0001F4B6",
     initial_sidebar_state="auto",
     layout="wide",
@@ -17,7 +17,7 @@ st.set_page_config(
 session_state.ensure_db_session_state()
 ui_widgets.render_sidebar_nav()
 
-st.title("Transactions")
+st.title("Transactions-legacy")
 
 if not st.session_state.get("db_ready"):
     st.warning("Open or create a database from the Home page first.")
