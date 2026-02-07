@@ -101,7 +101,7 @@ Purpose: inline editing with bulk saves while keeping the original Transactions 
 - Table behavior:
   - Column sorting via header clicks remains enabled.
   - All fields editable except `id`.
-  - No row add/remove in the table (add/delete via forms only).
+  - In-table add/remove is allowed with explicit save; deletions require confirmation.
   - Bulk edits across non-contiguous rows are allowed.
   - Save changes is explicit and all-or-nothing; invalid rows block the save.
   - Provide a short note near the table explaining that subcategory suggestions are not

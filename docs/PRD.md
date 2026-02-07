@@ -81,7 +81,8 @@ The app runs on a desktop host and is usable on mobile browsers.
 - TP4: All fields are editable except `id`.
 - TP5: Bulk edits across multiple (including non-contiguous) rows are allowed.
 - TP6: Add/edit/delete single-transaction forms remain available on the page (same behavior
-  as Transactions); no add/remove rows directly in the table.
+  as Transactions). The grid supports in-table add/remove with explicit save; deletions require
+  confirmation before saving.
 - TP7: Save is explicit and all-or-nothing: if any edited row is invalid, no changes are
   written to the DB and errors are shown.
 - TP8: Suggestions for payer/payee/category/subcategory/payment_type use existing DB values
