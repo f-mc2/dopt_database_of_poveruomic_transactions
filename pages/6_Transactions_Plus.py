@@ -362,7 +362,12 @@ try:
                 st.session_state["txp_editor_df"] = base_df.copy(deep=True)
                 st.session_state["txp_force_reset"] = False
                 st.session_state["txp_editor_key"] = st.session_state.get("txp_editor_key", 0) + 1
-            editor_df = st.session_state.get("txp_editor_df", base_df).copy(deep=True)
+            editor_key = f"txp_editor_{st.session_state.get('txp_editor_key', 0)}"
+            widget_df = st.session_state.get(editor_key)
+            if isinstance(widget_df, pd.DataFrame):
+                editor_df = widget_df.copy(deep=True)
+            else:
+                editor_df = st.session_state.get("txp_editor_df", base_df).copy(deep=True)
             editor_df = transactions_plus_grid.ensure_row_ids(editor_df)
             if SELECT_COLUMN not in editor_df.columns:
                 editor_df[SELECT_COLUMN] = False
@@ -408,7 +413,7 @@ try:
             editor_height = max(420, 32 * 15 + 80)
             edited_df = st.data_editor(
                 editor_df,
-                key=f"txp_editor_{st.session_state.get('txp_editor_key', 0)}",
+                key=editor_key,
                 column_config=column_config,
                 column_order=display_order,
                 hide_index=True,
@@ -430,15 +435,30 @@ try:
                 "Default order is date_application desc, id desc; click column headers to sort."
             )
 
-            with st.expander("Bulk edit selected rows", expanded=False):
-                selected_row_ids: List[str] = []
-                if SELECT_COLUMN in edited_df.columns and ROW_ID_COLUMN in edited_df.columns:
-                    selected_row_ids = (
-                        edited_df.loc[edited_df[SELECT_COLUMN] == True, ROW_ID_COLUMN]
-                        .dropna()
-                        .astype(str)
-                        .tolist()
+            selected_row_ids: List[str] = []
+            if SELECT_COLUMN in edited_df.columns and ROW_ID_COLUMN in edited_df.columns:
+                selected_row_ids = (
+                    edited_df.loc[edited_df[SELECT_COLUMN] == True, ROW_ID_COLUMN]
+                    .dropna()
+                    .astype(str)
+                    .tolist()
+                )
+            if st.button(
+                "Remove selected rows from grid", key="txp_remove_selected_rows"
+            ):
+                if not selected_row_ids:
+                    st.warning("Select at least one row to remove.")
+                else:
+                    updated_df = edited_df.loc[
+                        ~edited_df[ROW_ID_COLUMN].isin(selected_row_ids)
+                    ].copy(deep=True)
+                    st.session_state["txp_editor_df"] = updated_df
+                    st.session_state["txp_editor_key"] = (
+                        st.session_state.get("txp_editor_key", 0) + 1
                     )
+                    st.rerun()
+
+            with st.expander("Bulk edit selected rows", expanded=False):
                 st.caption(f"Selected rows: {len(selected_row_ids)}")
 
                 bulk_fields = {
